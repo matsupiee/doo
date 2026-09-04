@@ -1,0 +1,25 @@
+{
+  "name": "@doo/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@better-auth/expo": "catalog:",
+    "@doo/db": "workspace:*",
+    "@doo/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@doo/config": "workspace:*",
+    "typescript": "^6.0.3"
+  }
+}

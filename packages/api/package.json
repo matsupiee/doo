@@ -1,0 +1,27 @@
+{
+  "name": "@doo/api",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@doo/auth": "workspace:*",
+    "@doo/db": "workspace:*",
+    "@doo/env": "workspace:*",
+    "@trpc/client": "catalog:",
+    "@trpc/server": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@doo/config": "workspace:*",
+    "hono": "catalog:",
+    "typescript": "^6.0.3"
+  }
+}
