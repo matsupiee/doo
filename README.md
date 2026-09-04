@@ -1,5 +1,19 @@
 # doo
 
+ミッションを自分や友だちに渡して、クリアした証拠を投稿していくSNSアプリです。
+
+- **ホーム** — みんなの達成（写真・動画・テキスト）が並ぶフィード
+- **ミッション作成** — ミッション名・内容・証明方法を書いて、自分や友だちに渡す
+- **プロフィール** — アカウント名と、いま自分に来ているミッション一覧
+
+### リレー
+
+ミッションはリレーにできます。クリアした人は次の人を **指名する / ランダムで決める / ここで止める**
+のどれかを選べます。リレーを始めるときに「1人が指名できる人数」を最大10人まで設定できるので、
+チェーンは1本にも枝分かれにもなります。リレーの全体像は `/relay/[relayId]` のツリー表示で追えます。
+
+写真・動画は現時点ではURLで登録します（アップロード基盤は未実装）。
+
 This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines React Native, Expo, Hono, TRPC, and more.
 
 ## Features
