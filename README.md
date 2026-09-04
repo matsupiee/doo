@@ -32,38 +32,44 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 
 ## Getting Started
 
-First, install the dependencies:
+1. 依存関係をインストールする:
 
 ```bash
 bun install
 ```
 
-## Database Setup
-
-This project uses SQLite with Drizzle ORM.
-
-1. Start the local SQLite database (optional):
+2. 環境変数を用意する（`.env` が無いとサーバーもアプリも起動しない）:
 
 ```bash
-bun run db:local
+cp apps/server/.env.example apps/server/.env
+cp apps/native/.env.example apps/native/.env
 ```
 
-2. Update your `.env` file in the `apps/server` directory with the appropriate connection details if needed.
+`apps/server/.env` の `BETTER_AUTH_SECRET` は 32 文字以上にする
+（`openssl rand -base64 32` など）。
 
-3. Apply the schema to your database:
+3. スキーマをデータベースに反映する:
 
 ```bash
 bun run db:push
 ```
 
-Then, run the development server:
+これを忘れると、サインアップ時にサーバーが
+`SQLITE_ERROR: no such table: user` で 500 を返す。
+
+4. 開発サーバーを起動する:
 
 ```bash
 bun run dev
 ```
 
-Use the Expo Go app to run the mobile application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+API は [http://localhost:3000](http://localhost:3000) で動く。
+iOS シミュレーターはホストの `localhost` をそのまま解決できるが、
+実機で動かす場合は `apps/native/.env` の `EXPO_PUBLIC_SERVER_URL` を
+開発マシンの LAN IP に変える。
+
+`turso dev` でローカル DB サーバーを立てる場合は、`bun run db:local` を
+起動したうえで `DATABASE_URL` をそのエンドポイントに向ける。
 
 ## Project Structure
 
