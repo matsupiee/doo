@@ -4,6 +4,7 @@ import { Link } from "expo-router";
 import { Card, Chip, useThemeColor } from "heroui-native";
 import { Image, Pressable, Text, View } from "react-native";
 
+import { CategoryChips } from "@/components/category-chips";
 import { queryClient, trpc } from "@/utils/trpc";
 
 export type FeedPost = {
@@ -20,6 +21,7 @@ export type FeedPost = {
   missionTitle: string;
   missionDescription: string | null;
   missionCreatorName: string;
+  missionCategories: string[];
   relayId: string | null;
   relayDepth: number;
   relayHandoff: "nominated" | "random" | "ended" | null;
@@ -90,6 +92,11 @@ export function PostCard({ post }: { post: FeedPost }) {
         <Text className="text-muted text-xs mt-0.5">
           出題: {post.missionCreatorName}
         </Text>
+        {post.missionCategories.length ? (
+          <View className="mt-2">
+            <CategoryChips categories={post.missionCategories} />
+          </View>
+        ) : null}
       </View>
 
       {post.mediaType === "photo" && post.mediaUrl ? (

@@ -1,7 +1,7 @@
 import { db } from "@doo/db";
-import { assignment, mission, post, user } from "@doo/db/schema";
+import { assignment, mission, missionCategory, post, user } from "@doo/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, like, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, ne, sql } from "drizzle-orm";
 import z from "zod";
 
 import { protectedProcedure, router } from "../index";
@@ -78,6 +78,7 @@ export const userRouter = router({
       const posts = await db
         .select({
           id: post.id,
+          missionId: mission.id,
           missionTitle: mission.title,
           mediaType: post.mediaType,
           mediaUrl: post.mediaUrl,
@@ -90,6 +91,27 @@ export const userRouter = router({
         .orderBy(desc(post.createdAt))
         .limit(50);
 
-      return { user: target, posts };
+      const categoryRows = posts.length
+        ? await db
+            .select({ missionId: missionCategory.missionId, category: missionCategory.category })
+            .from(missionCategory)
+            .where(inArray(missionCategory.missionId, [...new Set(posts.map((p) => p.missionId))]))
+            .orderBy(missionCategory.createdAt)
+        : [];
+
+      const byMission = new Map<string, string[]>();
+      for (const row of categoryRows) {
+        const list = byMission.get(row.missionId);
+        if (list) list.push(row.category);
+        else byMission.set(row.missionId, [row.category]);
+      }
+
+      return {
+        user: target,
+        posts: posts.map((row) => ({
+          ...row,
+          missionCategories: byMission.get(row.missionId) ?? [],
+        })),
+      };
     }),
 });

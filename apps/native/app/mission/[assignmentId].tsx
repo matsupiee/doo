@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
+import { MediaUploadField } from "@/components/media-upload-field";
 import { UserPicker } from "@/components/user-picker";
 import { queryClient, trpc } from "@/utils/trpc";
 
@@ -28,7 +29,7 @@ export default function ClearMissionScreen() {
   const { toast } = useToast();
 
   const [mediaType, setMediaType] = useState<MediaType>("photo");
-  const [mediaUrl, setMediaUrl] = useState("");
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
   const [handoff, setHandoff] = useState<HandoffMode>("nominated");
   const [nextAssigneeIds, setNextAssigneeIds] = useState<string[]>([]);
@@ -73,10 +74,10 @@ export default function ClearMissionScreen() {
     );
   }
 
-  const needsUrl = mediaType !== "text";
+  const needsMedia = mediaType !== "text";
   const canSubmit =
     !clear.isPending &&
-    (!needsUrl || mediaUrl.trim().length > 0) &&
+    (!needsMedia || mediaUrl !== null) &&
     (mediaType !== "text" || caption.trim().length > 0) &&
     (!isRelay || handoff !== "nominated" || nextAssigneeIds.length > 0);
 
@@ -98,28 +99,30 @@ export default function ClearMissionScreen() {
 
           <View className="flex-row gap-2">
             {mediaOptions.map((option) => (
-              <Pressable key={option.value} onPress={() => setMediaType(option.value)}>
-                <Chip
-                  variant={mediaType === option.value ? "primary" : "secondary"}
-                  color={mediaType === option.value ? "success" : "default"}
-                >
-                  <Chip.Label>{option.label}</Chip.Label>
-                </Chip>
-              </Pressable>
+              // `onPress` goes on the Chip itself: it renders its own Pressable,
+              // so a wrapping Pressable never sees the touch.
+              <Chip
+                key={option.value}
+                variant={mediaType === option.value ? "primary" : "secondary"}
+                color={mediaType === option.value ? "success" : "default"}
+                onPress={() => {
+                  // The uploaded file belongs to the previous kind — drop it.
+                  if (option.value !== mediaType) setMediaUrl(null);
+                  setMediaType(option.value);
+                }}
+              >
+                <Chip.Label>{option.label}</Chip.Label>
+              </Chip>
             ))}
           </View>
 
-          {needsUrl ? (
-            <TextField>
-              <Label>{mediaType === "photo" ? "写真のURL" : "動画のURL"}</Label>
-              <Input
-                value={mediaUrl}
-                onChangeText={setMediaUrl}
-                placeholder="https://..."
-                autoCapitalize="none"
-                keyboardType="url"
-              />
-            </TextField>
+          {needsMedia ? (
+            <MediaUploadField
+              key={mediaType}
+              kind={mediaType === "photo" ? "photo" : "video"}
+              value={mediaUrl}
+              onChange={setMediaUrl}
+            />
           ) : null}
 
           <TextField>
@@ -172,7 +175,7 @@ export default function ClearMissionScreen() {
             clear.mutate({
               assignmentId: item.assignmentId,
               mediaType,
-              mediaUrl: needsUrl ? mediaUrl.trim() : undefined,
+              mediaUrl: needsMedia ? (mediaUrl ?? undefined) : undefined,
               caption: caption.trim() || undefined,
               handoff: isRelay
                 ? handoff === "nominated"

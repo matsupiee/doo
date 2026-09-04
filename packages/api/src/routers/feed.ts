@@ -1,7 +1,16 @@
 import { db } from "@doo/db";
-import { assignment, mission, post, postReaction, relay, user } from "@doo/db/schema";
+import {
+  assignment,
+  mission,
+  missionCategory,
+  missionCategoryValues,
+  post,
+  postReaction,
+  relay,
+  user,
+} from "@doo/db/schema";
 import { TRPCError } from "@trpc/server";
-import { aliasedTable, and, desc, eq, lt, sql } from "drizzle-orm";
+import { aliasedTable, and, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import z from "zod";
 
 import { protectedProcedure, router } from "../index";
@@ -18,8 +27,10 @@ export const feedRouter = router({
           limit: z.number().int().min(1).max(50).default(20),
           /** Timestamp (ms) of the last item of the previous page. */
           cursor: z.number().int().optional(),
+          /** Show only posts whose mission carries one of these categories. */
+          categories: z.array(z.enum(missionCategoryValues)).default([]),
         })
-        .default({ limit: 20 }),
+        .default({ limit: 20, categories: [] }),
     )
     .query(async ({ ctx, input }) => {
       const meId = ctx.session.user.id;
@@ -55,12 +66,41 @@ export const feedRouter = router({
         .innerJoin(mission, eq(mission.id, post.missionId))
         .innerJoin(missionCreator, eq(missionCreator.id, mission.creatorId))
         .innerJoin(assignment, eq(assignment.id, post.assignmentId))
-        .where(input.cursor ? lt(post.createdAt, new Date(input.cursor)) : undefined)
+        .where(
+          and(
+            input.cursor ? lt(post.createdAt, new Date(input.cursor)) : undefined,
+            input.categories.length
+              ? inArray(
+                  mission.id,
+                  db
+                    .select({ id: missionCategory.missionId })
+                    .from(missionCategory)
+                    .where(inArray(missionCategory.category, input.categories)),
+                )
+              : undefined,
+          ),
+        )
         .orderBy(desc(post.createdAt))
         .limit(input.limit);
 
+      const categoryRows = rows.length
+        ? await db
+            .select({ missionId: missionCategory.missionId, category: missionCategory.category })
+            .from(missionCategory)
+            .where(inArray(missionCategory.missionId, [...new Set(rows.map((r) => r.missionId))]))
+            .orderBy(missionCategory.createdAt)
+        : [];
+
+      const byMission = new Map<string, string[]>();
+      for (const row of categoryRows) {
+        const list = byMission.get(row.missionId);
+        if (list) list.push(row.category);
+        else byMission.set(row.missionId, [row.category]);
+      }
+
       const items = rows.map((row) => ({
         ...row,
+        missionCategories: (byMission.get(row.missionId) ?? []) as (typeof missionCategoryValues)[number][],
         reactionCount: Number(row.reactionCount),
         reactedByMe: Number(row.reactedByMe) > 0,
       }));
@@ -125,6 +165,12 @@ export const relayRouter = router({
 
       if (!relayRow) throw new TRPCError({ code: "NOT_FOUND", message: "Relay not found" });
 
+      const categoryRows = await db
+        .select({ category: missionCategory.category })
+        .from(missionCategory)
+        .where(eq(missionCategory.missionId, relayRow.missionId))
+        .orderBy(missionCategory.createdAt);
+
       const nodes = await db
         .select({
           assignmentId: assignment.id,
@@ -147,6 +193,9 @@ export const relayRouter = router({
         .where(eq(assignment.relayId, input.relayId))
         .orderBy(assignment.depth, assignment.createdAt);
 
-      return { relay: relayRow, nodes };
+      return {
+        relay: { ...relayRow, categories: categoryRows.map((row) => row.category) },
+        nodes,
+      };
     }),
 });

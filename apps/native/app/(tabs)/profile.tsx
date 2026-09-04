@@ -5,10 +5,14 @@ import { Button, Card, Chip, Input, Spinner, TextField, useToast } from "heroui-
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { CategoryChips } from "@/components/category-chips";
 import { Container } from "@/components/container";
 import { formatWhen } from "@/components/post-card";
+import { UserPicker } from "@/components/user-picker";
 import { authClient } from "@/lib/auth-client";
 import { queryClient, trpc } from "@/utils/trpc";
+
+const MAX_RECIPIENTS = 10;
 
 const pickedByLabel = {
   self: "自分で受けた",
@@ -20,6 +24,9 @@ export default function ProfileScreen() {
   const { toast } = useToast();
   const [isEditingName, setIsEditingName] = useState(false);
   const [name, setName] = useState("");
+  /** Mission id whose "あとから渡す" picker is open, if any. */
+  const [assigningMissionId, setAssigningMissionId] = useState<string | null>(null);
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
 
   const me = useQuery(trpc.user.me.queryOptions());
   const inbox = useQuery(trpc.mission.inbox.queryOptions());
@@ -31,6 +38,21 @@ export default function ProfileScreen() {
         queryClient.invalidateQueries();
         setIsEditingName(false);
         toast.show({ variant: "success", label: "アカウント名を更新しました" });
+      },
+      onError: (error) => toast.show({ variant: "danger", label: error.message }),
+    }),
+  );
+
+  const assign = useMutation(
+    trpc.mission.assign.mutationOptions({
+      onSuccess: (result) => {
+        queryClient.invalidateQueries();
+        setAssigningMissionId(null);
+        setAssigneeIds([]);
+        toast.show({
+          variant: "success",
+          label: `${result.assignmentCount}人にミッションを渡しました`,
+        });
       },
       onError: (error) => toast.show({ variant: "danger", label: error.message }),
     }),
@@ -125,6 +147,8 @@ export default function ProfileScreen() {
                 ) : null}
               </View>
 
+              <CategoryChips categories={item.categories} />
+
               {item.description ? (
                 <Text className="text-muted text-sm">{item.description}</Text>
               ) : null}
@@ -171,9 +195,19 @@ export default function ProfileScreen() {
           {sent.data?.map((item) => (
             <Card key={item.missionId} variant="secondary" className="p-4 gap-1">
               <Text className="text-foreground font-semibold">🎯 {item.title}</Text>
+
+              {item.categories.length ? (
+                <View className="mt-1">
+                  <CategoryChips categories={item.categories} />
+                </View>
+              ) : null}
+
               <Text className="text-muted text-xs">
-                {Number(item.cleared ?? 0)} / {Number(item.total ?? 0)} 人が達成
+                {item.total === 0
+                  ? "まだ誰にも渡していません"
+                  : `${item.cleared} / ${item.total} 人が達成`}
               </Text>
+
               {item.relayId ? (
                 <Link
                   href={{ pathname: "/relay/[relayId]", params: { relayId: item.relayId } }}
@@ -181,7 +215,63 @@ export default function ProfileScreen() {
                 >
                   リレーの続きを見る →
                 </Link>
-              ) : null}
+              ) : (
+                <View className="mt-2 gap-3">
+                  {assigningMissionId === item.missionId ? (
+                    <>
+                      <UserPicker
+                        selectedIds={assigneeIds}
+                        onChange={setAssigneeIds}
+                        max={MAX_RECIPIENTS}
+                      />
+                      <View className="flex-row gap-2">
+                        <Button
+                          size="sm"
+                          isDisabled={assigneeIds.length === 0 || assign.isPending}
+                          onPress={() =>
+                            assign.mutate({ missionId: item.missionId, assigneeIds })
+                          }
+                        >
+                          <Button.Label>渡す</Button.Label>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onPress={() => {
+                            setAssigningMissionId(null);
+                            setAssigneeIds([]);
+                          }}
+                        >
+                          <Button.Label>キャンセル</Button.Label>
+                        </Button>
+                      </View>
+                    </>
+                  ) : (
+                    <View className="flex-row gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onPress={() => {
+                          setAssigningMissionId(item.missionId);
+                          setAssigneeIds([]);
+                        }}
+                      >
+                        <Button.Label>誰かに渡す</Button.Label>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        isDisabled={assign.isPending}
+                        onPress={() =>
+                          assign.mutate({ missionId: item.missionId, assignToSelf: true })
+                        }
+                      >
+                        <Button.Label>自分でやる</Button.Label>
+                      </Button>
+                    </View>
+                  )}
+                </View>
+              )}
             </Card>
           ))}
 

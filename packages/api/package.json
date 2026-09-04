@@ -9,11 +9,14 @@
       "default": "./src/*.ts"
     }
   },
-  "scripts": {},
+  "scripts": {
+    "test": "bun test ./test"
+  },
   "dependencies": {
     "@doo/auth": "workspace:*",
     "@doo/db": "workspace:*",
     "@doo/env": "workspace:*",
+    "@doo/storage": "workspace:*",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
     "dotenv": "catalog:",

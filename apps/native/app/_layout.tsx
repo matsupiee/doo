@@ -1,21 +1,34 @@
 import "@/global.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
-import { HeroUINativeProvider, useThemeColor } from "heroui-native";
+import { HeroUINativeProvider, Spinner, useThemeColor } from "heroui-native";
+import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 
-import { AuthGate } from "@/components/auth-gate";
 import { AppThemeProvider } from "@/contexts/app-theme-context";
+import { authClient } from "@/lib/auth-client";
 import { queryClient } from "@/utils/trpc";
 
 export const unstable_settings = {
   initialRouteName: "(tabs)",
 };
 
+/** doo のすべてがアカウント前提なので、未ログインなら (auth) 側だけを見せる。 */
 function StackLayout() {
   const foreground = useThemeColor("foreground");
   const background = useThemeColor("background");
+  const { data: session, isPending } = authClient.useSession();
+
+  if (isPending) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <Spinner />
+      </View>
+    );
+  }
+
+  const isSignedIn = !!session?.user;
 
   return (
     <Stack
@@ -26,12 +39,18 @@ function StackLayout() {
         contentStyle: { backgroundColor: background },
       }}
     >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="mission/[assignmentId]"
-        options={{ title: "ミッション達成", presentation: "modal" }}
-      />
-      <Stack.Screen name="relay/[relayId]" options={{ title: "リレー" }} />
+      <Stack.Protected guard={isSignedIn}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="mission/[assignmentId]"
+          options={{ title: "ミッション達成", presentation: "modal" }}
+        />
+        <Stack.Screen name="relay/[relayId]" options={{ title: "リレー" }} />
+      </Stack.Protected>
+
+      <Stack.Protected guard={!isSignedIn}>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      </Stack.Protected>
     </Stack>
   );
 }
@@ -43,9 +62,7 @@ export default function Layout() {
         <KeyboardProvider>
           <AppThemeProvider>
             <HeroUINativeProvider>
-              <AuthGate>
-                <StackLayout />
-              </AuthGate>
+              <StackLayout />
             </HeroUINativeProvider>
           </AppThemeProvider>
         </KeyboardProvider>

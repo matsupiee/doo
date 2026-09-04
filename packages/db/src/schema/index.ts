@@ -3,6 +3,7 @@ export * from "./session";
 export * from "./account";
 export * from "./verification";
 export * from "./mission";
+export * from "./mission-category";
 export * from "./relay";
 export * from "./assignment";
 export * from "./post";

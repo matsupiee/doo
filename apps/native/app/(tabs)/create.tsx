@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import {
   Button,
   Card,
+  Chip,
   Input,
   Label,
   Spinner,
@@ -16,6 +17,7 @@ import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
 import { UserPicker } from "@/components/user-picker";
+import { MISSION_CATEGORIES, type MissionCategory } from "@/lib/mission-categories";
 import { queryClient, trpc } from "@/utils/trpc";
 
 const MAX_RECIPIENTS = 10;
@@ -27,6 +29,7 @@ export default function CreateMissionScreen() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [proofHint, setProofHint] = useState("");
+  const [categories, setCategories] = useState<MissionCategory[]>([]);
   const [assignToSelf, setAssignToSelf] = useState(false);
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [isRelay, setIsRelay] = useState(false);
@@ -38,11 +41,14 @@ export default function CreateMissionScreen() {
         queryClient.invalidateQueries();
         toast.show({
           variant: "success",
-          label: `ミッションを${result.assignmentCount}人に渡しました`,
+          label: result.assignmentCount
+            ? `ミッションを${result.assignmentCount}人に渡しました`
+            : "ミッションを作りました（まだ誰にも渡していません）",
         });
         setTitle("");
         setDescription("");
         setProofHint("");
+        setCategories([]);
         setAssigneeIds([]);
         setAssignToSelf(false);
         setIsRelay(false);
@@ -55,8 +61,10 @@ export default function CreateMissionScreen() {
     }),
   );
 
+  const hasRecipient = assignToSelf || assigneeIds.length > 0;
+  // A relay needs a first runner; a plain mission can be created and handed out later.
   const canSubmit =
-    title.trim().length > 0 && (assignToSelf || assigneeIds.length > 0) && !createMission.isPending;
+    title.trim().length > 0 && (!isRelay || hasRecipient) && !createMission.isPending;
 
   return (
     <Container className="px-4" scrollViewProps={{ showsVerticalScrollIndicator: false }}>
@@ -97,7 +105,37 @@ export default function CreateMissionScreen() {
         </Card>
 
         <Card variant="secondary" className="p-4 gap-3">
-          <Card.Title>誰に渡す？</Card.Title>
+          <Card.Title>カテゴリ（任意・複数可）</Card.Title>
+          <View className="flex-row flex-wrap gap-2">
+            {MISSION_CATEGORIES.map((option) => {
+              const isSelected = categories.includes(option.value);
+              return (
+                // `Chip` is itself a Pressable, so it takes `onPress` directly —
+                // wrapping it in another Pressable swallows the tap.
+                <Chip
+                  key={option.value}
+                  variant={isSelected ? "primary" : "secondary"}
+                  color={isSelected ? "success" : "default"}
+                  onPress={() =>
+                    setCategories((current) =>
+                      current.includes(option.value)
+                        ? current.filter((value) => value !== option.value)
+                        : [...current, option.value],
+                    )
+                  }
+                >
+                  <Chip.Label>{option.label}</Chip.Label>
+                </Chip>
+              );
+            })}
+          </View>
+        </Card>
+
+        <Card variant="secondary" className="p-4 gap-3">
+          <Card.Title>誰に渡す？（任意）</Card.Title>
+          <Text className="text-muted text-xs">
+            いま決まっていなければ空のままでOK。あとからプロフィールで渡せます。
+          </Text>
 
           <Pressable
             onPress={() => setAssignToSelf((value) => !value)}
@@ -132,6 +170,12 @@ export default function CreateMissionScreen() {
             </View>
           </Pressable>
 
+          {isRelay && !hasRecipient ? (
+            <Text className="text-danger text-xs">
+              リレーは最初に走る人が必要です。自分か誰かを選んでください。
+            </Text>
+          ) : null}
+
           {isRelay ? (
             <View className="gap-2">
               <Text className="text-foreground text-sm">1人が指名できる人数（最大10人）</Text>
@@ -164,6 +208,7 @@ export default function CreateMissionScreen() {
               title: title.trim(),
               description: description.trim() || undefined,
               proofHint: proofHint.trim() || undefined,
+              categories,
               assignToSelf,
               assigneeIds,
               relay: isRelay ? { enabled: true, maxNominations } : undefined,
@@ -173,7 +218,7 @@ export default function CreateMissionScreen() {
           {createMission.isPending ? (
             <Spinner size="sm" color="default" />
           ) : (
-            <Button.Label>ミッションを渡す</Button.Label>
+            <Button.Label>{hasRecipient ? "ミッションを渡す" : "ミッションを作る"}</Button.Label>
           )}
         </Button>
       </View>

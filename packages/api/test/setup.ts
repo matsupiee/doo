@@ -1,0 +1,10 @@
+process.env.SKIP_ENV_VALIDATION = "1";
+process.env.R2_ACCOUNT_ID = "test-account";
+process.env.R2_ACCESS_KEY_ID = "test-access-key";
+process.env.R2_SECRET_ACCESS_KEY = "test-secret-key";
+process.env.R2_BUCKET = "doo-media-test";
+process.env.R2_PUBLIC_BASE_URL = "https://media.example.com/";
+process.env.DATABASE_URL = "file:test.db";
+process.env.BETTER_AUTH_SECRET = "test-secret-that-is-at-least-32-characters";
+process.env.BETTER_AUTH_URL = "http://localhost:3000";
+process.env.CORS_ORIGIN = "http://localhost:8081";

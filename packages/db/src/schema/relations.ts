@@ -3,6 +3,7 @@ import { relations } from "drizzle-orm";
 import { account } from "./account";
 import { assignment } from "./assignment";
 import { mission } from "./mission";
+import { missionCategory } from "./mission-category";
 import { post } from "./post";
 import { postReaction } from "./post-reaction";
 import { relay } from "./relay";
@@ -27,6 +28,11 @@ export const missionRelations = relations(mission, ({ one, many }) => ({
   assignments: many(assignment),
   posts: many(post),
   relays: many(relay),
+  categories: many(missionCategory),
+}));
+
+export const missionCategoryRelations = relations(missionCategory, ({ one }) => ({
+  mission: one(mission, { fields: [missionCategory.missionId], references: [mission.id] }),
 }));
 
 export const relayRelations = relations(relay, ({ one, many }) => ({

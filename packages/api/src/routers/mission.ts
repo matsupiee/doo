@@ -1,5 +1,13 @@
 import { db } from "@doo/db";
-import { assignment, mission, post, relay, user } from "@doo/db/schema";
+import {
+  assignment,
+  mission,
+  missionCategory,
+  missionCategoryValues,
+  post,
+  relay,
+  user,
+} from "@doo/db/schema";
 import { TRPCError } from "@trpc/server";
 import { aliasedTable, and, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import z from "zod";
@@ -7,6 +15,7 @@ import z from "zod";
 import { protectedProcedure, router } from "../index";
 
 export const MAX_RELAY_NOMINATIONS = 10;
+export const MAX_MISSION_CATEGORIES = missionCategoryValues.length;
 
 const assigner = aliasedTable(user, "assigner");
 
@@ -35,6 +44,23 @@ async function pickRandomUser(excludeIds: string[]) {
   return picked?.id ?? null;
 }
 
+/** Categories keyed by mission id, so list queries stay one extra round trip. */
+async function categoriesByMission(missionIds: string[]) {
+  const map = new Map<string, (typeof missionCategoryValues)[number][]>();
+  if (!missionIds.length) return map;
+  const rows = await db
+    .select({ missionId: missionCategory.missionId, category: missionCategory.category })
+    .from(missionCategory)
+    .where(inArray(missionCategory.missionId, missionIds))
+    .orderBy(missionCategory.createdAt);
+  for (const row of rows) {
+    const list = map.get(row.missionId);
+    if (list) list.push(row.category);
+    else map.set(row.missionId, [row.category]);
+  }
+  return map;
+}
+
 async function assertUsersExist(userIds: string[]) {
   if (!userIds.length) return;
   const found = await db
@@ -58,6 +84,10 @@ export const missionRouter = router({
           title: z.string().trim().min(1).max(80),
           description: z.string().trim().max(500).optional(),
           proofHint: z.string().trim().max(200).optional(),
+          categories: z
+            .array(z.enum(missionCategoryValues))
+            .max(MAX_MISSION_CATEGORIES)
+            .default([]),
           assigneeIds: z.array(z.string().min(1)).max(MAX_RELAY_NOMINATIONS).default([]),
           assignToSelf: z.boolean().default(false),
           relay: z
@@ -67,7 +97,11 @@ export const missionRouter = router({
             })
             .optional(),
         })
-        .refine((value) => value.assignToSelf || value.assigneeIds.length > 0, {
+        /**
+         * A relay needs someone to run the first leg; a plain mission may be
+         * created with nobody on it and handed out later.
+         */
+        .refine((value) => !value.relay || value.assignToSelf || value.assigneeIds.length > 0, {
           message: "Pick at least one person, or take the mission yourself",
           path: ["assigneeIds"],
         }),
@@ -90,6 +124,13 @@ export const missionRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not create mission" });
       }
       const missionId = createdMission.id;
+
+      const categories = [...new Set(input.categories)];
+      if (categories.length) {
+        await db
+          .insert(missionCategory)
+          .values(categories.map((category) => ({ missionId, category })));
+      }
 
       let relayId: string | null = null;
       if (input.relay) {
@@ -132,14 +173,16 @@ export const missionRouter = router({
         })),
       ];
 
-      await db.insert(assignment).values(rows);
+      if (rows.length) {
+        await db.insert(assignment).values(rows);
+      }
 
-      return { missionId, relayId, assignmentCount: rows.length };
+      return { missionId, relayId, assignmentCount: rows.length, categories };
     }),
 
   /** "自分に面白い依頼が来てないかな？" — the missions waiting on me. */
   inbox: protectedProcedure.query(async ({ ctx }) => {
-    return db
+    const rows = await db
       .select({
         assignmentId: assignment.id,
         status: assignment.status,
@@ -160,11 +203,14 @@ export const missionRouter = router({
       .leftJoin(relay, eq(relay.id, assignment.relayId))
       .where(and(eq(assignment.assigneeId, ctx.session.user.id), eq(assignment.status, "pending")))
       .orderBy(desc(assignment.createdAt));
+
+    const categories = await categoriesByMission(rows.map((row) => row.missionId));
+    return rows.map((row) => ({ ...row, categories: categories.get(row.missionId) ?? [] }));
   }),
 
-  /** Missions I handed out, with how far each one got. */
+  /** Missions I made, with how far each one got. Includes ones nobody holds yet. */
   sent: protectedProcedure.query(async ({ ctx }) => {
-    return db
+    const rows = await db
       .select({
         missionId: mission.id,
         title: mission.title,
@@ -179,7 +225,83 @@ export const missionRouter = router({
       .where(eq(mission.creatorId, ctx.session.user.id))
       .groupBy(mission.id, relay.id)
       .orderBy(desc(mission.createdAt));
+
+    const categories = await categoriesByMission(rows.map((row) => row.missionId));
+    return rows.map((row) => ({
+      ...row,
+      total: Number(row.total ?? 0),
+      cleared: Number(row.cleared ?? 0),
+      categories: categories.get(row.missionId) ?? [],
+    }));
   }),
+
+  /**
+   * Hand out a mission that already exists — the counterpart to creating one
+   * with nobody on it. Only the creator may do this.
+   */
+  assign: protectedProcedure
+    .input(
+      z
+        .object({
+          missionId: z.string().min(1),
+          assigneeIds: z.array(z.string().min(1)).max(MAX_RELAY_NOMINATIONS).default([]),
+          assignToSelf: z.boolean().default(false),
+        })
+        .refine((value) => value.assignToSelf || value.assigneeIds.length > 0, {
+          message: "Pick at least one person, or take the mission yourself",
+          path: ["assigneeIds"],
+        }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const meId = ctx.session.user.id;
+
+      const [target] = await db
+        .select({ id: mission.id })
+        .from(mission)
+        .where(and(eq(mission.id, input.missionId), eq(mission.creatorId, meId)))
+        .limit(1);
+      if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Mission not found" });
+
+      const [relayRow] = await db
+        .select({ id: relay.id })
+        .from(relay)
+        .where(eq(relay.missionId, target.id))
+        .limit(1);
+      if (relayRow) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Relay missions are handed on by whoever clears them",
+        });
+      }
+
+      const wanted = [...new Set(input.assigneeIds)];
+      await assertUsersExist(wanted.filter((id) => id !== meId));
+      if (input.assignToSelf) wanted.push(meId);
+
+      const existing = await db
+        .select({ assigneeId: assignment.assigneeId })
+        .from(assignment)
+        .where(eq(assignment.missionId, target.id));
+      const taken = new Set(existing.map((row) => row.assigneeId));
+
+      const rows = [...new Set(wanted)]
+        .filter((id) => !taken.has(id))
+        .map((assigneeId) => ({
+          missionId: target.id,
+          assigneeId,
+          assignerId: assigneeId === meId ? null : meId,
+          relayId: null,
+          parentAssignmentId: null,
+          depth: 0,
+          pickedBy: assigneeId === meId ? ("self" as const) : ("nominated" as const),
+        }));
+
+      if (rows.length) {
+        await db.insert(assignment).values(rows);
+      }
+
+      return { missionId: target.id, assignmentCount: rows.length };
+    }),
 
   decline: protectedProcedure
     .input(z.object({ assignmentId: z.string().min(1) }))
