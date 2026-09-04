@@ -1,6 +1,6 @@
 import { expo } from "@better-auth/expo";
 import { createDb } from "@doo/db";
-import * as schema from "@doo/db/schema/auth";
+import { account, session, user, verification } from "@doo/db/schema";
 import { env } from "@doo/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -12,7 +12,7 @@ export function createAuth() {
     database: drizzleAdapter(db, {
       provider: "sqlite",
 
-      schema: schema,
+      schema: { user, session, account, verification },
     }),
     trustedOrigins: [
       env.CORS_ORIGIN,
@@ -27,6 +27,10 @@ export function createAuth() {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {
+      // Ids come from the schema's cuid2 `$defaultFn`, never from the caller.
+      database: {
+        generateId: false,
+      },
       defaultCookieAttributes: {
         sameSite: "none",
         secure: true,
