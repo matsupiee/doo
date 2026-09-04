@@ -77,31 +77,40 @@ export const missionRouter = router({
       const recipients = [...new Set(input.assigneeIds.filter((id) => id !== meId))];
       await assertUsersExist(recipients);
 
-      const missionId = crypto.randomUUID();
-      await db.insert(mission).values({
-        id: missionId,
-        title: input.title,
-        description: input.description ?? null,
-        proofHint: input.proofHint ?? null,
-        creatorId: meId,
-      });
+      const [createdMission] = await db
+        .insert(mission)
+        .values({
+          title: input.title,
+          description: input.description ?? null,
+          proofHint: input.proofHint ?? null,
+          creatorId: meId,
+        })
+        .returning({ id: mission.id });
+      if (!createdMission) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not create mission" });
+      }
+      const missionId = createdMission.id;
 
       let relayId: string | null = null;
       if (input.relay) {
-        relayId = crypto.randomUUID();
-        await db.insert(relay).values({
-          id: relayId,
-          missionId,
-          starterId: meId,
-          maxNominations: input.relay.maxNominations,
-        });
+        const [createdRelay] = await db
+          .insert(relay)
+          .values({
+            missionId,
+            starterId: meId,
+            maxNominations: input.relay.maxNominations,
+          })
+          .returning({ id: relay.id });
+        if (!createdRelay) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not create relay" });
+        }
+        relayId = createdRelay.id;
       }
 
       const rows = [
         ...(input.assignToSelf
           ? [
               {
-                id: crypto.randomUUID(),
                 missionId,
                 assigneeId: meId,
                 assignerId: null,
@@ -113,7 +122,6 @@ export const missionRouter = router({
             ]
           : []),
         ...recipients.map((assigneeId) => ({
-          id: crypto.randomUUID(),
           missionId,
           assigneeId,
           assignerId: meId,
@@ -229,16 +237,21 @@ export const missionRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Photo and video proof needs a URL" });
       }
 
-      const postId = crypto.randomUUID();
-      await db.insert(post).values({
-        id: postId,
-        assignmentId: row.id,
-        missionId: row.missionId,
-        authorId: meId,
-        mediaType: input.mediaType,
-        mediaUrl: input.mediaUrl ?? null,
-        caption: input.caption ?? null,
-      });
+      const [createdPost] = await db
+        .insert(post)
+        .values({
+          assignmentId: row.id,
+          missionId: row.missionId,
+          authorId: meId,
+          mediaType: input.mediaType,
+          mediaUrl: input.mediaUrl ?? null,
+          caption: input.caption ?? null,
+        })
+        .returning({ id: post.id });
+      if (!createdPost) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not create post" });
+      }
+      const postId = createdPost.id;
 
       const handoff = row.relayId ? (input.handoff ?? { mode: "ended" as const }) : null;
       const nextAssignees: { id: string; pickedBy: "nominated" | "random" }[] = [];
@@ -292,7 +305,6 @@ export const missionRouter = router({
       if (nextAssignees.length && row.relayId) {
         await db.insert(assignment).values(
           nextAssignees.map((next) => ({
-            id: crypto.randomUUID(),
             missionId: row.missionId,
             assigneeId: next.id,
             assignerId: meId,

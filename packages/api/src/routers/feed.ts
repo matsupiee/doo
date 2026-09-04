@@ -96,9 +96,7 @@ export const feedRouter = router({
         return { reacted: false };
       }
 
-      await db
-        .insert(postReaction)
-        .values({ id: crypto.randomUUID(), postId: input.postId, userId: meId });
+      await db.insert(postReaction).values({ postId: input.postId, userId: meId });
       return { reacted: true };
     }),
 });
