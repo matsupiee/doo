@@ -13,8 +13,8 @@ import { mission } from "./mission";
 import { relay } from "./relay";
 import { user } from "./user";
 
-/** How the assignee was picked, for the "指名 / ランダム" badge in the UI. */
-export const assignmentPickedBy = ["self", "nominated", "random"] as const;
+/** How the assignee was picked, for the "指名 / ランダム / 参加" badge in the UI. */
+export const assignmentPickedBy = ["self", "nominated", "random", "joined"] as const;
 export const assignmentStatus = ["pending", "cleared", "declined"] as const;
 /** What the assignee decided to do with the baton once they cleared it. */
 export const assignmentRelayHandoff = ["nominated", "random", "ended"] as const;
@@ -45,6 +45,11 @@ export const assignment = sqliteTable(
     /** 0 for the person who started the relay, +1 per hop. */
     depth: integer("depth").default(0).notNull(),
     pickedBy: text("picked_by", { enum: assignmentPickedBy }).default("nominated").notNull(),
+    /**
+     * The "これ一緒にやらない？" note attached when someone invites another
+     * participant. Null when the assignee took the mission on themselves.
+     */
+    inviteMessage: text("invite_message"),
     status: text("status", { enum: assignmentStatus }).default("pending").notNull(),
     /** Set once the assignee decided whether to keep the chain going. */
     relayHandoff: text("relay_handoff", { enum: assignmentRelayHandoff }),

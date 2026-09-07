@@ -18,6 +18,7 @@ const pickedByLabel = {
   self: "起点",
   nominated: "指名",
   random: "ランダム",
+  joined: "一緒にやる",
 } as const;
 
 export default function RelayScreen() {

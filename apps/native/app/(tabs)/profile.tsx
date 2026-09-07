@@ -18,6 +18,7 @@ const pickedByLabel = {
   self: "自分で受けた",
   nominated: "指名",
   random: "ランダム",
+  joined: "一緒にやる",
 } as const;
 
 export default function ProfileScreen() {

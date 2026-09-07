@@ -25,7 +25,7 @@ export type FeedPost = {
   relayId: string | null;
   relayDepth: number;
   relayHandoff: "nominated" | "random" | "ended" | null;
-  pickedBy: "self" | "nominated" | "random";
+  pickedBy: "self" | "nominated" | "random" | "joined";
   reactionCount: number;
   reactedByMe: boolean;
 };
@@ -34,6 +34,7 @@ const pickedByLabel = {
   self: "自分でチャレンジ",
   nominated: "指名された",
   random: "ランダムで当たった",
+  joined: "一緒にチャレンジ",
 } as const;
 
 export function formatWhen(date: string | Date) {
