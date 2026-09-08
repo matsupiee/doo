@@ -2,7 +2,7 @@
 
 ## DB Insert: id と created_at を省略する (CRITICAL)
 
-Drizzle ORM でレコードを insert する際は、`id` と `created_at` を**必ず省略**する。
+Drizzle ORM でレコードを insert する際は、`id` と `created_at` を必ず省略する。
 
 これらはスキーマで自動生成されるため、明示的に渡してはならない。
 
@@ -88,7 +88,7 @@ export const scraper_jobs_bad = pgTable("scraper_jobs", {
 
 ## マイグレーションファイルは手書き禁止 (CRITICAL)
 
-マイグレーションファイル（`packages/db/src/migrations/*.sql`）は**必ず `drizzle-kit generate` で生成**する。手書きは絶対にしない。
+マイグレーションファイル（`packages/db/src/migrations/*.sql`）は必ず `drizzle-kit generate` で生成する。手書きは絶対にしない。
 
 ```bash
 # ✅ CORRECT: drizzle-kit で生成する
