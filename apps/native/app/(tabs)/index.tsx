@@ -1,16 +1,23 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Chip, Spinner } from "heroui-native";
+import { Spinner } from "heroui-native";
 import { useCallback, useState } from "react";
-import { FlatList, RefreshControl, ScrollView, Text, View } from "react-native";
+import { FlatList, RefreshControl, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { FilterChips } from "@/components/filter-chips";
+import { FLOATING_TAB_BAR_HEIGHT } from "@/components/floating-tab-bar";
 import { PostCard, type FeedPost } from "@/components/post-card";
+import { ScreenHeader } from "@/components/screen-header";
+import { StatPills } from "@/components/stat-pills";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { trpc } from "@/utils/trpc";
 
 export default function FeedScreen() {
   const insets = useSafeAreaInsets();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
+
+  const me = useQuery(trpc.user.me.queryOptions());
 
   /** 固定のカテゴリ一覧ではなく、実際に使われているタグを並べる。 */
   const tagOptions = useQuery(trpc.feed.tags.queryOptions());
@@ -26,50 +33,43 @@ export default function FeedScreen() {
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await Promise.all([feed.refetch(), tagOptions.refetch()]);
+    await Promise.all([feed.refetch(), tagOptions.refetch(), me.refetch()]);
     setIsRefreshing(false);
-  }, [feed, tagOptions]);
+  }, [feed, tagOptions, me]);
 
   return (
     <View className="flex-1 bg-background">
-      {tagOptions.data?.length ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}
-          className="grow-0"
-        >
-          {tagOptions.data.map((option) => {
-            const isSelected = tags.includes(option.title);
-            return (
-              // `Chip` is itself a Pressable, so it takes `onPress` directly.
-              <Chip
-                key={option.title}
-                variant={isSelected ? "primary" : "secondary"}
-                color={isSelected ? "success" : "default"}
-                size="sm"
-                onPress={() =>
-                  setTags((current) =>
-                    current.includes(option.title)
-                      ? current.filter((value) => value !== option.title)
-                      : [...current, option.title],
-                  )
-                }
-              >
-                <Chip.Label>{option.title}</Chip.Label>
-              </Chip>
-            );
-          })}
-        </ScrollView>
-      ) : null}
+      <ScreenHeader title="みんなの記録" eyebrow="doo" actions={<ThemeToggle />}>
+        <StatPills
+          stats={[
+            { label: "自分の達成", value: `${me.data?.completedCount ?? 0}`, isHighlighted: true },
+            { label: "参加中", value: `${me.data?.participatingCount ?? 0}` },
+            { label: "絞り込み", value: tags.length ? `${tags.length}個` : "なし" },
+          ]}
+        />
+      </ScreenHeader>
+
+      <FilterChips
+        options={(tagOptions.data ?? []).map((option) => option.title)}
+        selected={tags}
+        onToggle={(value) =>
+          setTags((current) =>
+            current.includes(value)
+              ? current.filter((tag) => tag !== value)
+              : [...current, value],
+          )
+        }
+      />
 
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <PostCard post={item} />}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          padding: 16,
-          paddingBottom: insets.bottom + 24,
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: insets.bottom + FLOATING_TAB_BAR_HEIGHT + 40,
           flexGrow: 1,
         }}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}

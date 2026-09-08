@@ -4,6 +4,7 @@ import { Input, Spinner, TextField, useThemeColor } from "heroui-native";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { Avatar } from "@/components/avatar";
 import { trpc } from "@/utils/trpc";
 
 type Props = {
@@ -62,15 +63,11 @@ export function UserPicker({ selectedIds, onChange, max, excludeIds = [] }: Prop
             <Pressable
               key={candidate.id}
               onPress={() => toggle(candidate.id)}
-              className={`flex-row items-center gap-3 rounded-lg border p-3 active:opacity-70 ${
-                isSelected ? "border-success" : "border-border"
+              className={`flex-row items-center gap-3 rounded-2xl p-3 active:opacity-70 ${
+                isSelected ? "bg-surface-tertiary" : "bg-surface-secondary"
               } ${isDisabled ? "opacity-40" : ""}`}
             >
-              <View className="w-8 h-8 rounded-full bg-accent items-center justify-center">
-                <Text className="text-foreground font-semibold">
-                  {candidate.name.slice(0, 1).toUpperCase()}
-                </Text>
-              </View>
+              <Avatar name={candidate.name} size="sm" />
               <Text className="flex-1 text-foreground">{candidate.name}</Text>
               <Ionicons
                 name={isSelected ? "checkmark-circle" : "ellipse-outline"}

@@ -1,17 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { Button, Card, Chip, Input, Label, Spinner, TextField, useToast } from "heroui-native";
+import { Button, Input, Label, Spinner, TextField, useThemeColor, useToast } from "heroui-native";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
+import { ScreenHeader } from "@/components/screen-header";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { queryClient, trpc } from "@/utils/trpc";
 
 const MAX_TAGS = 10;
 
 export default function CreateMissionScreen() {
   const { toast } = useToast();
+  const mutedColor = useThemeColor("muted");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -52,9 +55,14 @@ export default function CreateMissionScreen() {
   const canSubmit = title.trim().length > 0 && !createMission.isPending;
 
   return (
-    <Container className="px-4" scrollViewProps={{ showsVerticalScrollIndicator: false }}>
-      <View className="gap-4 py-4">
-        <Card variant="secondary" className="p-4 gap-3">
+    <Container
+      hasFloatingTabBar
+      scrollViewProps={{ showsVerticalScrollIndicator: false }}
+    >
+      <ScreenHeader title="やりたいこと" eyebrow="新しく登録する" actions={<ThemeToggle />} />
+
+      <View className="px-5 gap-3">
+        <View className="bg-surface rounded-3xl p-4 gap-3">
           <TextField>
             <Label>やりたいこと</Label>
             <Input
@@ -77,10 +85,10 @@ export default function CreateMissionScreen() {
               style={{ minHeight: 88, textAlignVertical: "top" }}
             />
           </TextField>
-        </Card>
+        </View>
 
-        <Card variant="secondary" className="p-4 gap-3">
-          <Card.Title>タグ（任意・複数可）</Card.Title>
+        <View className="bg-surface rounded-3xl p-4 gap-3">
+          <Text className="text-foreground text-lg font-light">タグ（任意・複数可）</Text>
           <Text className="text-muted text-xs">
             自由に書けます。フィードの絞り込みに使われます。
           </Text>
@@ -109,27 +117,26 @@ export default function CreateMissionScreen() {
                 <Pressable
                   key={tag}
                   onPress={() => setTags((current) => current.filter((value) => value !== tag))}
-                  className="active:opacity-70"
+                  className="h-8 px-3 rounded-full bg-accent flex-row items-center gap-1 active:opacity-70"
                 >
-                  <Chip variant="primary" color="success" size="sm">
-                    <Chip.Label>{tag} ✕</Chip.Label>
-                  </Chip>
+                  <Text className="text-accent-foreground text-xs font-medium">{tag}</Text>
+                  <Ionicons name="close" size={13} color="#23282d" />
                 </Pressable>
               ))}
             </View>
           ) : null}
-        </Card>
+        </View>
 
-        <Card variant="secondary" className="p-4 flex-row gap-3">
-          <Ionicons name="information-circle-outline" size={20} color="#888" />
-          <Text className="text-muted text-xs flex-1">
+        <View className="bg-surface rounded-3xl p-4 flex-row gap-3">
+          <Ionicons name="information-circle-outline" size={20} color={mutedColor} />
+          <Text className="text-muted text-xs flex-1 leading-5">
             登録すると自分が参加者になります。ほかのユーザーからも見えて、あとから参加してもらえます。
           </Text>
-        </Card>
+        </View>
 
         <Button
           isDisabled={!canSubmit}
-          className="mb-8"
+          className="mt-1"
           onPress={() =>
             createMission.mutate({
               title: title.trim(),

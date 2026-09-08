@@ -1,11 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import { Card, Spinner } from "heroui-native";
-import { Pressable, Text, View } from "react-native";
+import { Spinner } from "heroui-native";
+import { Text, View } from "react-native";
 
+import { Avatar } from "@/components/avatar";
 import { Container } from "@/components/container";
+import { ListEmpty, ListPanel, ListRow } from "@/components/list-panel";
 import { formatWhen } from "@/components/post-card";
-import { TagChips } from "@/components/tag-chips";
+import { ScreenHeader } from "@/components/screen-header";
+import { StatPills } from "@/components/stat-pills";
 import { trpc } from "@/utils/trpc";
 
 /** 他の人のプロフィール。登録したやりたいことを見て、そこから参加できる。 */
@@ -23,7 +26,8 @@ export default function UserProfileScreen() {
 
   if (!profile.data) {
     return (
-      <Container className="px-4">
+      <Container>
+        <ScreenHeader title="プロフィール" hasBackButton />
         <View className="flex-1 items-center justify-center">
           <Text className="text-foreground font-semibold">このユーザーは見つかりません</Text>
         </View>
@@ -34,79 +38,66 @@ export default function UserProfileScreen() {
   const { user, missions, completions } = profile.data;
 
   return (
-    <Container className="px-4" scrollViewProps={{ showsVerticalScrollIndicator: false }}>
-      <View className="gap-4 py-4">
-        <Card variant="secondary" className="p-4 flex-row items-center gap-3">
-          <View className="w-14 h-14 rounded-full bg-accent items-center justify-center">
-            <Text className="text-foreground text-xl font-bold">
-              {user.name.slice(0, 1).toUpperCase()}
+    <Container scrollViewProps={{ showsVerticalScrollIndicator: false }}>
+      <ScreenHeader title={user.name} eyebrow="プロフィール" hasBackButton>
+        <StatPills
+          stats={[
+            { label: "達成", value: `${completions.length}`, isHighlighted: true },
+            { label: "やりたいこと", value: `${missions.length}` },
+          ]}
+        />
+      </ScreenHeader>
+
+      <View className="px-5 gap-3 pb-8">
+        <View className="bg-surface rounded-3xl p-4 flex-row items-center gap-4">
+          <Avatar name={user.name} size="lg" shape="squircle" />
+          <View className="flex-1 gap-0.5">
+            <Text className="text-foreground text-xl font-medium" numberOfLines={1}>
+              {user.name}
             </Text>
-          </View>
-          <View className="flex-1">
-            <Text className="text-foreground text-2xl font-bold">{user.name}</Text>
             <Text className="text-muted text-xs">
               やりたいこと {missions.length}件・達成 {completions.length}件
             </Text>
           </View>
-        </Card>
+        </View>
 
-        <View className="gap-3">
-          <Text className="text-foreground text-lg font-semibold">やりたいこと</Text>
-
-          {missions.length === 0 ? (
-            <Card variant="secondary" className="p-4">
-              <Text className="text-muted text-sm">まだ登録していません。</Text>
-            </Card>
-          ) : null}
+        <ListPanel title="やりたいこと" count={`${missions.length}件`}>
+          {missions.length === 0 ? <ListEmpty>まだ登録していません。</ListEmpty> : null}
 
           {missions.map((item) => (
-            <Pressable
+            <ListRow
               key={item.missionId}
-              className="active:opacity-70"
+              icon="flag"
+              title={item.title}
+              subtitle={item.tags.length ? item.tags.join("・") : undefined}
+              trailing={formatWhen(item.createdAt)}
               onPress={() =>
                 router.push({
                   pathname: "/mission/[missionId]",
                   params: { missionId: item.missionId },
                 })
               }
-            >
-              <Card variant="secondary" className="p-4 gap-1">
-                <Text className="text-foreground font-semibold">🎯 {item.title}</Text>
-                {item.tags.length ? (
-                  <View className="mt-1">
-                    <TagChips tags={item.tags} />
-                  </View>
-                ) : null}
-                <Text className="text-muted text-xs">{formatWhen(item.createdAt)}</Text>
-              </Card>
-            </Pressable>
+            />
           ))}
-        </View>
+        </ListPanel>
 
-        <View className="gap-3 pb-8">
-          <Text className="text-foreground text-lg font-semibold">達成したこと</Text>
-
-          {completions.length === 0 ? (
-            <Card variant="secondary" className="p-4">
-              <Text className="text-muted text-sm">まだ達成の記録はありません。</Text>
-            </Card>
-          ) : null}
+        <ListPanel title="達成したこと" count={`${completions.length}件`}>
+          {completions.length === 0 ? <ListEmpty>まだ達成の記録はありません。</ListEmpty> : null}
 
           {completions.map((item) => (
-            <Card key={item.completionId} variant="secondary" className="p-4 gap-1">
-              <Text className="text-foreground font-semibold">🎯 {item.missionTitle}</Text>
-              <Text className="text-muted text-xs">
-                {item.participants.length > 1
+            <ListRow
+              key={item.completionId}
+              icon="checkmark-circle"
+              title={item.missionTitle}
+              subtitle={
+                item.participants.length > 1
                   ? `${item.participants.map((row) => row.name).join("・")} と共同達成`
-                  : "個人達成"}
-                ・{formatWhen(item.completedAt)}
-              </Text>
-              {item.caption ? (
-                <Text className="text-foreground text-sm mt-1">{item.caption}</Text>
-              ) : null}
-            </Card>
+                  : (item.caption ?? "個人達成")
+              }
+              trailing={formatWhen(item.completedAt)}
+            />
           ))}
-        </View>
+        </ListPanel>
       </View>
     </Container>
   );

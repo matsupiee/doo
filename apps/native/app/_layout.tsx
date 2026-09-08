@@ -1,7 +1,7 @@
 import "@/global.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
-import { HeroUINativeProvider, Spinner, useThemeColor } from "heroui-native";
+import { HeroUINativeProvider, Spinner } from "heroui-native";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -16,8 +16,6 @@ export const unstable_settings = {
 
 /** doo のすべてがアカウント前提なので、未ログインなら (auth) 側だけを見せる。 */
 function StackLayout() {
-  const foreground = useThemeColor("foreground");
-  const background = useThemeColor("background");
   const { data: session, isPending } = authClient.useSession();
 
   if (isPending) {
@@ -31,22 +29,16 @@ function StackLayout() {
   const isSignedIn = !!session?.user;
 
   return (
-    <Stack
-      screenOptions={{
-        headerTintColor: foreground,
-        headerStyle: { backgroundColor: background },
-        headerTitleStyle: { color: foreground, fontWeight: "600" },
-        contentStyle: { backgroundColor: background },
-      }}
-    >
+    // 画面の上部は各画面の ScreenHeader が担当するので、ヘッダーは出さない。
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "transparent" } }}>
       <Stack.Protected guard={isSignedIn}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="mission/[missionId]" options={{ title: "やりたいこと" }} />
-        <Stack.Screen name="user/[userId]" options={{ title: "プロフィール" }} />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="mission/[missionId]" />
+        <Stack.Screen name="user/[userId]" />
       </Stack.Protected>
 
       <Stack.Protected guard={!isSignedIn}>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" />
       </Stack.Protected>
     </Stack>
   );

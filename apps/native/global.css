@@ -1,3 +1,113 @@
 @import "tailwindcss";
 @import "uniwind";
 @import "heroui-native/styles";
+
+/*
+ * doo のデザイントークン。
+ * チャコールの下地に、イエローを1色だけアクセントとして置く。
+ * カードとボタンは大きめの角丸でそろえる（--radius から全サイズが決まる）。
+ */
+@theme {
+  --radius: 0.625rem; /* カード・ボタン 30px / チップ 15px */
+}
+
+/*
+ * heroui-native は soft 系の文字色をアクセント色に寄せて作る。
+ * アクセントが黄色だと読みにくくなるので、文字は本文の色のままにする。
+ */
+@theme inline static {
+  --color-accent-soft-foreground: var(--foreground);
+  --color-default-soft-foreground: var(--foreground);
+}
+
+@layer theme {
+  :root {
+    @variant light {
+      --background: #e9ebea;
+      --foreground: #23282d;
+
+      --surface: #ffffff;
+      --surface-foreground: var(--foreground);
+      --surface-secondary: #f5f6f5;
+      --surface-secondary-foreground: var(--foreground);
+      --surface-tertiary: #eceeed;
+      --surface-tertiary-foreground: var(--foreground);
+
+      --overlay: #ffffff;
+      --overlay-foreground: var(--foreground);
+      --backdrop: rgba(35, 40, 45, 0.25);
+
+      --muted: #6d767e;
+
+      --default: #d9dedc;
+      --default-foreground: var(--foreground);
+
+      --accent: #dce63c;
+      --accent-foreground: #23282d;
+
+      --field-background: #ffffff;
+      --field-foreground: var(--foreground);
+      --field-placeholder: var(--muted);
+      --field-border: transparent;
+
+      --success: #b9e074;
+      --success-foreground: #23282d;
+      --warning: #f0c33c;
+      --warning-foreground: #23282d;
+      --danger: #d64545;
+      --danger-foreground: #ffffff;
+
+      --segment: #ffffff;
+      --segment-foreground: var(--foreground);
+
+      --border: #dfe3e2;
+      --separator: #c4cac9;
+      --focus: var(--accent);
+      --link: var(--foreground);
+    }
+
+    @variant dark {
+      --background: #2e3339;
+      --foreground: #f3f5f4;
+
+      --surface: #3b4249;
+      --surface-foreground: var(--foreground);
+      --surface-secondary: #424a52;
+      --surface-secondary-foreground: var(--foreground);
+      --surface-tertiary: #4b545c;
+      --surface-tertiary-foreground: var(--foreground);
+
+      --overlay: #3b4249;
+      --overlay-foreground: var(--foreground);
+      --backdrop: rgba(20, 23, 26, 0.5);
+
+      --muted: #a3adb5;
+
+      --default: #454d55;
+      --default-foreground: var(--foreground);
+
+      --accent: #e8f14b;
+      --accent-foreground: #23282d;
+
+      --field-background: #454d55;
+      --field-foreground: var(--foreground);
+      --field-placeholder: var(--muted);
+      --field-border: transparent;
+
+      --success: #c7ea8c;
+      --success-foreground: #23282d;
+      --warning: #f2c94c;
+      --warning-foreground: #23282d;
+      --danger: #f2777a;
+      --danger-foreground: #23282d;
+
+      --segment: #4b545c;
+      --segment-foreground: var(--foreground);
+
+      --border: #4a525a;
+      --separator: #59626a;
+      --focus: var(--accent);
+      --link: var(--foreground);
+    }
+  }
+}
