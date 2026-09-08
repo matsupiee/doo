@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { Input, Spinner, TextField, useThemeColor } from "heroui-native";
+import { Spinner, useThemeColor } from "heroui-native";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
 
+import { Avatar } from "@/components/ig/avatar";
 import { trpc } from "@/utils/trpc";
 
 type Props = {
@@ -14,11 +15,11 @@ type Props = {
   excludeIds?: string[];
 };
 
-/** 名前で探してタップで選ぶ一覧。共同達成の相手を選ぶのに使う。 */
+/** 名前で探してタップで選ぶ一覧。Instagram のタグ付け画面と同じ形。 */
 export function UserPicker({ selectedIds, onChange, max, excludeIds = [] }: Props) {
   const [query, setQuery] = useState("");
-  const successColor = useThemeColor("success");
-  const mutedColor = useThemeColor("muted");
+  const foreground = useThemeColor("foreground");
+  const placeholder = useThemeColor("muted");
 
   const users = useQuery(trpc.user.search.queryOptions({ query, limit: 30 }));
   const candidates = (users.data ?? []).filter((item) => !excludeIds.includes(item.id));
@@ -33,54 +34,54 @@ export function UserPicker({ selectedIds, onChange, max, excludeIds = [] }: Prop
   }
 
   return (
-    <View className="gap-3">
-      <TextField>
-        <Input
+    <View className="gap-2">
+      {/* Instagram の検索欄: 角丸のグレー地に虫めがね */}
+      <View className="flex-row items-center gap-2 rounded-lg bg-surface-tertiary px-3 py-2">
+        <Ionicons name="search" size={16} color="#8e8e8e" />
+        <TextInput
           value={query}
           onChangeText={setQuery}
           placeholder="名前で検索"
+          placeholderTextColor={placeholder}
           autoCapitalize="none"
+          className="flex-1 text-foreground text-[15px]"
+          style={{ color: foreground, paddingVertical: 0 }}
         />
-      </TextField>
+      </View>
 
-      <Text className="text-muted text-xs">
+      <Text className="text-muted text-[12px]">
         {selectedIds.length} / {max} 人を選択中
       </Text>
 
       {users.isLoading ? <Spinner size="sm" /> : null}
 
       {!users.isLoading && candidates.length === 0 ? (
-        <Text className="text-muted text-sm">該当するユーザーがいません。</Text>
+        <Text className="text-muted text-[13px]">該当するユーザーがいません。</Text>
       ) : null}
 
-      <View className="gap-2">
-        {candidates.map((candidate) => {
-          const isSelected = selectedIds.includes(candidate.id);
-          const isDisabled = !isSelected && selectedIds.length >= max;
+      {candidates.map((candidate) => {
+        const isSelected = selectedIds.includes(candidate.id);
+        const isDisabled = !isSelected && selectedIds.length >= max;
 
-          return (
-            <Pressable
-              key={candidate.id}
-              onPress={() => toggle(candidate.id)}
-              className={`flex-row items-center gap-3 rounded-lg border p-3 active:opacity-70 ${
-                isSelected ? "border-success" : "border-border"
-              } ${isDisabled ? "opacity-40" : ""}`}
-            >
-              <View className="w-8 h-8 rounded-full bg-accent items-center justify-center">
-                <Text className="text-foreground font-semibold">
-                  {candidate.name.slice(0, 1).toUpperCase()}
-                </Text>
-              </View>
-              <Text className="flex-1 text-foreground">{candidate.name}</Text>
-              <Ionicons
-                name={isSelected ? "checkmark-circle" : "ellipse-outline"}
-                size={20}
-                color={isSelected ? successColor : mutedColor}
-              />
-            </Pressable>
-          );
-        })}
-      </View>
+        return (
+          <Pressable
+            key={candidate.id}
+            onPress={() => toggle(candidate.id)}
+            className="flex-row items-center gap-3 py-2 active:opacity-60"
+            style={isDisabled ? { opacity: 0.4 } : undefined}
+          >
+            <Avatar name={candidate.name} uri={candidate.image} size={40} />
+            <Text className="flex-1 text-foreground text-[14px] font-semibold">
+              {candidate.name}
+            </Text>
+            <Ionicons
+              name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+              size={22}
+              color={isSelected ? "#0095f6" : "#c7c7c7"}
+            />
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

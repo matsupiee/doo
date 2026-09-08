@@ -1,3 +1,126 @@
 @import "tailwindcss";
 @import "uniwind";
 @import "heroui-native/styles";
+
+/*
+ * Instagram 風のトークン。heroui-native の既定値を上書きするので、
+ * ライブラリの import より後ろに置く。
+ */
+@theme {
+  /* Instagram の UI で実際に使われている色 */
+  --ig-blue: #0095f6;
+  --ig-red: #ed4956;
+  --ig-gray: #8e8e8e;
+
+  /* ストーリーのリング。左下オレンジから右上パープルへ流れる */
+  --color-story-1: #f9ce34;
+  --color-story-2: #ee2a7b;
+  --color-story-3: #6228d7;
+
+  /* Instagram のボタンは角丸 8px、入力欄は 3px と浅い */
+  --radius: 0.5rem;
+  --field-radius: 0.25rem;
+  --field-border-width: 1px;
+}
+
+@layer theme {
+  :root {
+    @variant light {
+      --background: #ffffff;
+      --foreground: #000000;
+
+      --surface: #ffffff;
+      --surface-foreground: var(--foreground);
+      --surface-secondary: #fafafa;
+      --surface-secondary-foreground: var(--foreground);
+      --surface-tertiary: #efefef;
+      --surface-tertiary-foreground: var(--foreground);
+
+      --overlay: #ffffff;
+      --overlay-foreground: var(--foreground);
+      --backdrop: rgba(0, 0, 0, 0.5);
+
+      --muted: var(--ig-gray);
+
+      /* セカンダリボタンの薄いグレー */
+      --default: #efefef;
+      --default-foreground: #000000;
+
+      --accent: var(--ig-blue);
+      --accent-foreground: #ffffff;
+
+      --field-background: #fafafa;
+      --field-foreground: #000000;
+      --field-placeholder: var(--ig-gray);
+      --field-border: #dbdbdb;
+
+      --success: #0095f6;
+      --success-foreground: #ffffff;
+      --warning: #ffb300;
+      --warning-foreground: #000000;
+      --danger: var(--ig-red);
+      --danger-foreground: #ffffff;
+
+      --segment: #ffffff;
+      --segment-foreground: #000000;
+
+      --border: #dbdbdb;
+      --separator: #dbdbdb;
+      --focus: #a8a8a8;
+      --link: var(--ig-blue);
+
+      /* Instagram はカードに影を落とさず、髪の毛のような境界線だけで区切る */
+      --surface-shadow: 0 0 0 0 transparent;
+      --field-shadow: 0 0 0 0 transparent;
+      --overlay-shadow: 0 0 0 0 transparent;
+    }
+
+    @variant dark {
+      --background: #000000;
+      --foreground: #fafafa;
+
+      --surface: #000000;
+      --surface-foreground: var(--foreground);
+      --surface-secondary: #121212;
+      --surface-secondary-foreground: var(--foreground);
+      --surface-tertiary: #1c1c1c;
+      --surface-tertiary-foreground: var(--foreground);
+
+      --overlay: #262626;
+      --overlay-foreground: var(--foreground);
+      --backdrop: rgba(0, 0, 0, 0.7);
+
+      --muted: #a8a8a8;
+
+      --default: #262626;
+      --default-foreground: #fafafa;
+
+      --accent: var(--ig-blue);
+      --accent-foreground: #ffffff;
+
+      --field-background: #121212;
+      --field-foreground: #fafafa;
+      --field-placeholder: #737373;
+      --field-border: #262626;
+
+      --success: #0095f6;
+      --success-foreground: #ffffff;
+      --warning: #ffb300;
+      --warning-foreground: #000000;
+      --danger: var(--ig-red);
+      --danger-foreground: #ffffff;
+
+      --segment: #262626;
+      --segment-foreground: #fafafa;
+
+      --border: #262626;
+      --separator: #262626;
+      --focus: #4d4d4d;
+      --link: var(--ig-blue);
+
+      --surface-shadow: 0 0 0 0 transparent;
+      --field-shadow: 0 0 0 0 transparent;
+      --overlay-shadow: 0 0 0 0 transparent;
+    }
+  }
+}

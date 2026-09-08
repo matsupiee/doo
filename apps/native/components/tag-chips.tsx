@@ -1,17 +1,14 @@
-import { Chip } from "heroui-native";
-import { View } from "react-native";
+import { Text } from "react-native";
 
-/** やりたいことと投稿カードに出す、読むだけのタグ。 */
-export function TagChips({ tags }: { tags: string[] }) {
+/**
+ * タグは Instagram のハッシュタグと同じく、チップではなく青い文字で出す。
+ */
+export function TagChips({ tags, className }: { tags: string[]; className?: string }) {
   if (!tags.length) return null;
 
   return (
-    <View className="flex-row flex-wrap gap-1.5">
-      {tags.map((tag) => (
-        <Chip key={tag} variant="secondary" size="sm">
-          <Chip.Label>{tag}</Chip.Label>
-        </Chip>
-      ))}
-    </View>
+    <Text className={className ?? "text-[13px]"} style={{ color: "#0095f6" }} numberOfLines={2}>
+      {tags.map((tag) => `#${tag}`).join(" ")}
+    </Text>
   );
 }

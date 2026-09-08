@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "@tanstack/react-query";
-import { Button, Spinner, useThemeColor } from "heroui-native";
+import { Spinner } from "heroui-native";
 import { useState } from "react";
-import { Image, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 
 import {
   captureWithCamera,
@@ -27,7 +27,6 @@ type Props = {
 export function MediaUploadField({ kind, value, onChange }: Props) {
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const mutedColor = useThemeColor("muted");
 
   const createUploadUrl = useMutation(trpc.upload.createUploadUrl.mutationOptions());
   const [isUploading, setIsUploading] = useState(false);
@@ -59,59 +58,74 @@ export function MediaUploadField({ kind, value, onChange }: Props) {
 
   return (
     <View className="gap-2">
-      {preview && kind === "photo" ? (
-        <Image
-          source={{ uri: preview }}
-          className="w-full h-56 rounded-lg"
-          resizeMode="cover"
-        />
-      ) : null}
+      {/* Instagram の投稿と同じ正方形のプレビュー */}
+      <View className="w-full aspect-square bg-surface-tertiary items-center justify-center overflow-hidden">
+        {preview && kind === "photo" ? (
+          <Image source={{ uri: preview }} className="w-full h-full" resizeMode="cover" />
+        ) : preview ? (
+          <View className="items-center gap-2">
+            <Ionicons name="videocam" size={40} color="#8e8e8e" />
+            <Text className="text-muted text-[12px]">動画を選択しました</Text>
+          </View>
+        ) : (
+          <View className="items-center gap-2">
+            <Ionicons
+              name={kind === "photo" ? "images-outline" : "videocam-outline"}
+              size={40}
+              color="#8e8e8e"
+            />
+            <Text className="text-muted text-[12px]">
+              {label}を選ぶと、ここにプレビューが出ます
+            </Text>
+          </View>
+        )}
 
-      {preview && kind === "video" ? (
-        <View className="h-24 items-center justify-center rounded-lg border border-border">
-          <Ionicons name="videocam" size={28} color={mutedColor} />
-          <Text className="text-muted text-xs mt-1">動画を選択しました</Text>
-        </View>
-      ) : null}
-
-      <View className="flex-row gap-2">
-        <Button
-          className="flex-1"
-          variant="secondary"
-          isDisabled={isUploading}
-          onPress={() => handle(() => pickFromLibrary(kind))}
-        >
-          <Button.Label>ライブラリから選ぶ</Button.Label>
-        </Button>
-        <Button
-          className="flex-1"
-          variant="secondary"
-          isDisabled={isUploading}
-          onPress={() => handle(() => captureWithCamera(kind))}
-        >
-          <Button.Label>{kind === "photo" ? "撮影する" : "録画する"}</Button.Label>
-        </Button>
+        {isUploading ? (
+          <View className="absolute inset-0 items-center justify-center bg-black/40 gap-2">
+            <Spinner />
+            <Text className="text-white text-[12px]">{label}をアップロード中…</Text>
+          </View>
+        ) : null}
       </View>
 
-      {isUploading ? (
-        <View className="flex-row items-center gap-2">
-          <Spinner size="sm" />
-          <Text className="text-muted text-sm">{label}をアップロード中…</Text>
-        </View>
-      ) : null}
+      {/* Instagram のギャラリー切り替えと同じ、青い文字のふたつの操作 */}
+      <View className="flex-row items-center justify-center gap-8 py-1">
+        <Pressable
+          className="flex-row items-center gap-1.5 active:opacity-60"
+          disabled={isUploading}
+          onPress={() => handle(() => pickFromLibrary(kind))}
+        >
+          <Ionicons name="images-outline" size={18} color="#0095f6" />
+          <Text className="text-[14px] font-semibold" style={{ color: "#0095f6" }}>
+            ライブラリ
+          </Text>
+        </Pressable>
+        <Pressable
+          className="flex-row items-center gap-1.5 active:opacity-60"
+          disabled={isUploading}
+          onPress={() => handle(() => captureWithCamera(kind))}
+        >
+          <Ionicons name="camera-outline" size={18} color="#0095f6" />
+          <Text className="text-[14px] font-semibold" style={{ color: "#0095f6" }}>
+            {kind === "photo" ? "撮影する" : "録画する"}
+          </Text>
+        </Pressable>
+      </View>
 
       {!isUploading && value ? (
-        <Text className="text-success text-sm">{label}をアップロードしました</Text>
+        <Text className="text-[12px] text-center" style={{ color: "#0095f6" }}>
+          {label}をアップロードしました
+        </Text>
       ) : null}
 
       {!isUploading && !value ? (
-        <Text className="text-muted text-xs">
+        <Text className="text-muted text-[12px] text-center">
           {kind === "photo" ? "最大 10MB" : "最大 100MB"}まで。アップロードした{label}
           が達成の証拠になります。
         </Text>
       ) : null}
 
-      {error ? <Text className="text-danger text-sm">{error}</Text> : null}
+      {error ? <Text className="text-danger text-[12px] text-center">{error}</Text> : null}
     </View>
   );
 }

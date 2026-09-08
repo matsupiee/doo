@@ -1,27 +1,24 @@
-import { Link, Stack } from "expo-router";
-import { Button, Surface } from "heroui-native";
-import { Text, View } from "react-native";
+import { Stack, router } from "expo-router";
+import { Pressable, Text, View } from "react-native";
 
-import { Container } from "@/components/container";
+import { EmptyState } from "@/components/ig/empty-state";
 
 export default function NotFoundScreen() {
   return (
     <>
-      <Stack.Screen options={{ title: "Not Found" }} />
-      <Container>
-        <View className="flex-1 justify-center items-center p-4">
-          <Surface variant="secondary" className="items-center p-6 max-w-sm rounded-lg">
-            <Text className="text-4xl mb-3">🤔</Text>
-            <Text className="text-foreground font-medium text-lg mb-1">Page Not Found</Text>
-            <Text className="text-muted text-sm text-center mb-4">
-              The page you're looking for doesn't exist.
-            </Text>
-            <Link href="/" asChild>
-              <Button size="sm">Go Home</Button>
-            </Link>
-          </Surface>
-        </View>
-      </Container>
+      <Stack.Screen options={{ title: "ページが見つかりません" }} />
+      <View className="flex-1 items-center justify-center bg-background">
+        <EmptyState
+          icon="help-outline"
+          title="ページが見つかりません"
+          body="お探しのページは削除されたか、URL が変わった可能性があります。"
+        />
+        <Pressable className="active:opacity-60" onPress={() => router.replace("/")}>
+          <Text className="text-[14px] font-semibold" style={{ color: "#0095f6" }}>
+            ホームに戻る
+          </Text>
+        </Pressable>
+      </View>
     </>
   );
 }

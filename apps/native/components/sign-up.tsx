@@ -1,9 +1,10 @@
 import { useForm } from "@tanstack/react-form";
-import { Button, FieldError, Input, Label, Spinner, TextField, useToast } from "heroui-native";
+import { FieldError, useToast } from "heroui-native";
 import { useRef } from "react";
 import { TextInput, View } from "react-native";
 import z from "zod";
 
+import { IgButton, IgField } from "@/components/ig/field";
 import { authClient } from "@/lib/auth-client";
 import { getAuthErrorMessage, getErrorMessage } from "@/lib/form-errors";
 import { queryClient } from "@/utils/trpc";
@@ -85,76 +86,68 @@ export function SignUp() {
             <View className="gap-3">
               <form.Field name="name">
                 {(field) => (
-                  <TextField>
-                    <Label>名前</Label>
-                    <Input
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChangeText={field.handleChange}
-                      placeholder="やまだ たろう"
-                      autoComplete="name"
-                      textContentType="name"
-                      returnKeyType="next"
-                      blurOnSubmit={false}
-                      onSubmitEditing={() => {
-                        emailInputRef.current?.focus();
-                      }}
-                    />
-                  </TextField>
+                  <IgField
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChangeText={field.handleChange}
+                    placeholder="名前"
+                    autoComplete="name"
+                    textContentType="name"
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => {
+                      emailInputRef.current?.focus();
+                    }}
+                  />
                 )}
               </form.Field>
 
               <form.Field name="email">
                 {(field) => (
-                  <TextField>
-                    <Label>メールアドレス</Label>
-                    <Input
-                      ref={emailInputRef}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChangeText={field.handleChange}
-                      placeholder="email@example.com"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoComplete="email"
-                      textContentType="emailAddress"
-                      returnKeyType="next"
-                      blurOnSubmit={false}
-                      onSubmitEditing={() => {
-                        passwordInputRef.current?.focus();
-                      }}
-                    />
-                  </TextField>
+                  <IgField
+                    ref={emailInputRef}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChangeText={field.handleChange}
+                    placeholder="メールアドレス"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    textContentType="emailAddress"
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => {
+                      passwordInputRef.current?.focus();
+                    }}
+                  />
                 )}
               </form.Field>
 
               <form.Field name="password">
                 {(field) => (
-                  <TextField>
-                    <Label>パスワード</Label>
-                    <Input
-                      ref={passwordInputRef}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChangeText={field.handleChange}
-                      placeholder="••••••••"
-                      secureTextEntry
-                      autoComplete="new-password"
-                      textContentType="newPassword"
-                      returnKeyType="go"
-                      onSubmitEditing={form.handleSubmit}
-                    />
-                  </TextField>
+                  <IgField
+                    ref={passwordInputRef}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChangeText={field.handleChange}
+                    placeholder="パスワード"
+                    secureTextEntry
+                    autoComplete="new-password"
+                    textContentType="newPassword"
+                    returnKeyType="go"
+                    onSubmitEditing={form.handleSubmit}
+                  />
                 )}
               </form.Field>
 
-              <Button onPress={form.handleSubmit} isDisabled={isSubmitting} className="mt-2">
-                {isSubmitting ? (
-                  <Spinner size="sm" color="default" />
-                ) : (
-                  <Button.Label>新規登録</Button.Label>
-                )}
-              </Button>
+              <View className="mt-1">
+                <IgButton
+                  label="登録する"
+                  onPress={form.handleSubmit}
+                  isDisabled={isSubmitting}
+                  isPending={isSubmitting}
+                />
+              </View>
             </View>
           </>
         );

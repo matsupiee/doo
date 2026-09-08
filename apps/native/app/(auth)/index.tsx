@@ -1,30 +1,40 @@
 import { useRouter } from "expo-router";
-import { Button } from "heroui-native";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Container } from "@/components/container";
+import { Wordmark } from "@/components/ig/wordmark";
 
 /** アプリを開いたときの入口。新規登録とログインのどちらかを選ぶ。 */
 export default function OnboardingScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   return (
-    <Container className="px-6" isScrollable={false}>
-      <View className="flex-1 justify-center gap-3">
-        <Text className="text-5xl font-bold text-foreground">doo</Text>
-        <Text className="text-lg text-muted">
+    <View className="flex-1 bg-background px-10" style={{ paddingBottom: insets.bottom }}>
+      <View className="flex-1 items-center justify-center gap-3">
+        <Wordmark size={72} />
+        <Text className="text-muted text-[14px] text-center">
           やりたいことを登録して、達成したら投稿する。
         </Text>
       </View>
 
-      <View className="gap-3 pb-10">
-        <Button onPress={() => router.push("/sign-up")}>
-          <Button.Label>新規登録</Button.Label>
-        </Button>
-        <Button variant="secondary" onPress={() => router.push("/sign-in")}>
-          <Button.Label>ログイン</Button.Label>
-        </Button>
+      <View className="gap-3 pb-6">
+        <Pressable
+          className="items-center justify-center rounded-lg py-3 active:opacity-80"
+          style={{ backgroundColor: "#0095f6" }}
+          onPress={() => router.push("/sign-up")}
+        >
+          <Text className="text-white text-[14px] font-semibold">アカウントを作る</Text>
+        </Pressable>
+        <Pressable
+          className="items-center justify-center rounded-lg border border-border py-3 active:opacity-70"
+          onPress={() => router.push("/sign-in")}
+        >
+          <Text className="text-[14px] font-semibold" style={{ color: "#0095f6" }}>
+            ログイン
+          </Text>
+        </Pressable>
       </View>
-    </Container>
+    </View>
   );
 }
