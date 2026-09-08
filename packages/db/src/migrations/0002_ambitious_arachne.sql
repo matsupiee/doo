@@ -1,1 +1,0 @@
-ALTER TABLE `assignment` ADD `invite_message` text;
