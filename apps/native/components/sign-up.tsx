@@ -148,7 +148,11 @@ export function SignUp() {
                 )}
               </form.Field>
 
-              <Button onPress={form.handleSubmit} isDisabled={isSubmitting} className="mt-2">
+              <Button
+                onPress={form.handleSubmit}
+                isDisabled={isSubmitting}
+                className="mt-2 rounded-full h-14"
+              >
                 {isSubmitting ? (
                   <Spinner size="sm" color="default" />
                 ) : (

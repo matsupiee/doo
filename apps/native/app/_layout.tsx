@@ -16,7 +16,6 @@ export const unstable_settings = {
 
 /** doo のすべてがアカウント前提なので、未ログインなら (auth) 側だけを見せる。 */
 function StackLayout() {
-  const foreground = useThemeColor("foreground");
   const background = useThemeColor("background");
   const { data: session, isPending } = authClient.useSession();
 
@@ -31,22 +30,22 @@ function StackLayout() {
   const isSignedIn = !!session?.user;
 
   return (
+    // ヘッダーは各画面が自分で描く。丸い戻るボタンを内容の上に重ねたいので、
+    // ナビゲーションバーは全画面で出さない。
     <Stack
       screenOptions={{
-        headerTintColor: foreground,
-        headerStyle: { backgroundColor: background },
-        headerTitleStyle: { color: foreground, fontWeight: "600" },
+        headerShown: false,
         contentStyle: { backgroundColor: background },
       }}
     >
       <Stack.Protected guard={isSignedIn}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="mission/[missionId]" options={{ title: "やりたいこと" }} />
-        <Stack.Screen name="user/[userId]" options={{ title: "プロフィール" }} />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="mission/[missionId]" />
+        <Stack.Screen name="user/[userId]" />
       </Stack.Protected>
 
       <Stack.Protected guard={!isSignedIn}>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" />
       </Stack.Protected>
     </Stack>
   );

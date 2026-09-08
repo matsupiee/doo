@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "@tanstack/react-query";
-import { Link } from "expo-router";
-import { Card, Chip, useThemeColor } from "heroui-native";
+import { Link, router } from "expo-router";
 import { Image, Pressable, Text, View } from "react-native";
 
-import { TagChips } from "@/components/tag-chips";
+import { Avatar } from "@/components/avatar";
+import { Pill } from "@/components/pill";
+import { brandColors, cardShadow, inkOnWhite, toneStyleFor } from "@/theme/tones";
 import { queryClient, trpc } from "@/utils/trpc";
 
 export type FeedPost = {
@@ -41,9 +42,12 @@ export function formatWhen(date: string | Date) {
   return `${Math.floor(hours / 24)}日前`;
 }
 
+/**
+ * フィードの1件。やりたいことごとに色が決まった塗りの面にして、
+ * 写真やひとことはその上の白い面に置く。
+ */
 export function PostCard({ post }: { post: FeedPost }) {
-  const mutedColor = useThemeColor("muted");
-  const dangerColor = useThemeColor("danger");
+  const tone = toneStyleFor(post.missionId);
 
   const toggleReaction = useMutation(
     trpc.feed.toggleReaction.mutationOptions({
@@ -56,80 +60,94 @@ export function PostCard({ post }: { post: FeedPost }) {
   const others = post.completionParticipants.filter((row) => row.userId !== post.authorId);
 
   return (
-    <Card variant="secondary" className="mb-4 overflow-hidden">
-      <View className="flex-row items-center gap-3 p-4 pb-3">
+    <View
+      className="rounded-[28px] p-5 gap-4"
+      style={[{ backgroundColor: tone.background }, cardShadow]}
+    >
+      <View className="flex-row items-center gap-3">
         <Link href={{ pathname: "/user/[userId]", params: { userId: post.authorId } }} asChild>
           <Pressable className="flex-row items-center gap-3 flex-1 active:opacity-70">
-            <View className="w-9 h-9 rounded-full bg-accent items-center justify-center overflow-hidden">
-              {post.authorImage ? (
-                <Image source={{ uri: post.authorImage }} className="w-9 h-9" />
-              ) : (
-                <Text className="text-foreground font-semibold">
-                  {post.authorName.slice(0, 1).toUpperCase()}
-                </Text>
-              )}
-            </View>
+            <Avatar name={post.authorName} image={post.authorImage} size={40} />
             <View className="flex-1">
-              <Text className="text-foreground font-semibold">{post.authorName}</Text>
-              <Text className="text-muted text-xs">
+              <Text className="font-extrabold text-base" style={{ color: tone.foreground }}>
+                {post.authorName}
+              </Text>
+              <Text className="text-xs" style={{ color: tone.mutedForeground }}>
                 {post.completionId ? "達成" : "進捗"}・
                 {formatWhen(post.completedAt ?? post.createdAt)}
               </Text>
             </View>
           </Pressable>
         </Link>
-        {post.completionParticipants.length > 1 ? (
-          <Chip variant="secondary" color="success" size="sm">
-            <Chip.Label>共同達成 {post.completionParticipants.length}人</Chip.Label>
-          </Chip>
-        ) : null}
+
+        <Pressable
+          className="flex-row items-center gap-1.5 rounded-full bg-white px-3.5 py-2.5 active:opacity-70"
+          accessibilityRole="button"
+          accessibilityLabel="この投稿に反応する"
+          onPress={() => toggleReaction.mutate({ postId: post.id })}
+        >
+          <Ionicons
+            name={post.reactedByMe ? "heart" : "heart-outline"}
+            size={18}
+            color={post.reactedByMe ? brandColors.heart : inkOnWhite}
+          />
+          <Text className="text-[13px] font-extrabold" style={{ color: inkOnWhite }}>
+            {post.reactionCount}
+          </Text>
+        </Pressable>
       </View>
 
-      <View className="px-4 pb-3">
-        <Link href={{ pathname: "/mission/[missionId]", params: { missionId: post.missionId } }}>
-          <Text className="text-foreground text-base font-semibold">🎯 {post.missionTitle}</Text>
-        </Link>
-        <Text className="text-muted text-xs mt-0.5">登録: {post.missionCreatorName}</Text>
-        {others.length ? (
-          <Text className="text-muted text-xs mt-0.5">
-            一緒に達成: {others.map((row) => row.name).join("・")}
-          </Text>
-        ) : null}
-        {post.missionTags.length ? (
-          <View className="mt-2">
-            <TagChips tags={post.missionTags} />
-          </View>
-        ) : null}
-      </View>
+      <Pressable
+        className="gap-1 active:opacity-80"
+        onPress={() =>
+          router.push({
+            pathname: "/mission/[missionId]",
+            params: { missionId: post.missionId },
+          })
+        }
+      >
+        <Text className="text-[24px] font-extrabold leading-8" style={{ color: tone.foreground }}>
+          {post.missionTitle}
+        </Text>
+        <Text className="text-sm" style={{ color: tone.mutedForeground }}>
+          登録: {post.missionCreatorName}
+          {others.length ? `・一緒に達成: ${others.map((row) => row.name).join("・")}` : ""}
+        </Text>
+      </Pressable>
 
       {post.mediaType === "photo" && post.mediaUrl ? (
-        <Image source={{ uri: post.mediaUrl }} className="w-full h-72" resizeMode="cover" />
+        <Image
+          source={{ uri: post.mediaUrl }}
+          className="w-full h-60 rounded-[20px]"
+          resizeMode="cover"
+        />
       ) : null}
 
       {post.mediaType === "video" && post.mediaUrl ? (
-        <View className="w-full h-48 bg-background items-center justify-center gap-2">
-          <Ionicons name="play-circle" size={44} color={mutedColor} />
-          <Text className="text-muted text-xs px-6 text-center" numberOfLines={1}>
+        <View className="w-full h-40 rounded-[20px] bg-white items-center justify-center gap-2">
+          <Ionicons name="play-circle" size={48} color={tone.onWhite} />
+          <Text className="text-xs px-6 text-center" numberOfLines={1} style={{ color: inkOnWhite }}>
             {post.mediaUrl}
           </Text>
         </View>
       ) : null}
 
-      {post.caption ? <Text className="text-foreground px-4 pt-3">{post.caption}</Text> : null}
+      {post.caption ? (
+        <View className="rounded-[20px] bg-white p-4">
+          <Text className="text-[15px] leading-6" style={{ color: inkOnWhite }}>
+            {post.caption}
+          </Text>
+        </View>
+      ) : null}
 
-      <View className="flex-row items-center gap-4 p-4">
-        <Pressable
-          className="flex-row items-center gap-1.5 active:opacity-60"
-          onPress={() => toggleReaction.mutate({ postId: post.id })}
-        >
-          <Ionicons
-            name={post.reactedByMe ? "heart" : "heart-outline"}
-            size={22}
-            color={post.reactedByMe ? dangerColor : mutedColor}
-          />
-          <Text className="text-muted text-sm">{post.reactionCount}</Text>
-        </Pressable>
+      <View className="flex-row flex-wrap gap-2">
+        {post.completionParticipants.length > 1 ? (
+          <Pill label={`共同達成 ${post.completionParticipants.length}人`} variant="light" />
+        ) : null}
+        {post.missionTags.slice(0, 4).map((tag) => (
+          <Pill key={tag} label={`#${tag}`} variant="light" color={tone.onWhite} />
+        ))}
       </View>
-    </Card>
+    </View>
   );
 }

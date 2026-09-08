@@ -1,16 +1,21 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Chip, Spinner } from "heroui-native";
+import { Spinner } from "heroui-native";
 import { useCallback, useState } from "react";
 import { FlatList, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Avatar } from "@/components/avatar";
+import { Pill } from "@/components/pill";
 import { PostCard, type FeedPost } from "@/components/post-card";
+import { Greeting, ScreenHeader } from "@/components/screen-header";
 import { trpc } from "@/utils/trpc";
 
 export default function FeedScreen() {
   const insets = useSafeAreaInsets();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
+
+  const me = useQuery(trpc.user.me.queryOptions());
 
   /** 固定のカテゴリ一覧ではなく、実際に使われているタグを並べる。 */
   const tagOptions = useQuery(trpc.feed.tags.queryOptions());
@@ -32,46 +37,60 @@ export default function FeedScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      {tagOptions.data?.length ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}
-          className="grow-0"
-        >
-          {tagOptions.data.map((option) => {
-            const isSelected = tags.includes(option.title);
-            return (
-              // `Chip` is itself a Pressable, so it takes `onPress` directly.
-              <Chip
-                key={option.title}
-                variant={isSelected ? "primary" : "secondary"}
-                color={isSelected ? "success" : "default"}
-                size="sm"
-                onPress={() =>
-                  setTags((current) =>
-                    current.includes(option.title)
-                      ? current.filter((value) => value !== option.title)
-                      : [...current, option.title],
-                  )
-                }
-              >
-                <Chip.Label>{option.title}</Chip.Label>
-              </Chip>
-            );
-          })}
-        </ScrollView>
-      ) : null}
-
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <PostCard post={item} />}
+        renderItem={({ item }) => (
+          <View className="px-5">
+            <PostCard post={item} />
+          </View>
+        )}
         contentContainerStyle={{
-          padding: 16,
-          paddingBottom: insets.bottom + 24,
+          paddingTop: insets.top + 8,
+          paddingBottom: insets.bottom + 108,
+          gap: 16,
           flexGrow: 1,
         }}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View className="gap-5">
+            <View className="px-5">
+              <ScreenHeader
+                eyebrow={<Greeting name={me.data?.name ?? "you"} />}
+                title={"今日は\nなにを達成する？"}
+                right={<Avatar name={me.data?.name ?? "?"} image={me.data?.image} size={48} />}
+              />
+            </View>
+
+            {tagOptions.data?.length ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+              >
+                <Pill
+                  label="すべて"
+                  variant={tags.length === 0 ? "solid" : "muted"}
+                  onPress={() => setTags([])}
+                />
+                {tagOptions.data.map((option) => (
+                  <Pill
+                    key={option.title}
+                    label={option.title}
+                    variant={tags.includes(option.title) ? "solid" : "muted"}
+                    onPress={() =>
+                      setTags((current) =>
+                        current.includes(option.title)
+                          ? current.filter((value) => value !== option.title)
+                          : [...current, option.title],
+                      )
+                    }
+                  />
+                ))}
+              </ScrollView>
+            ) : null}
+          </View>
+        }
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
         onEndReachedThreshold={0.4}
         onEndReached={() => {
@@ -81,13 +100,13 @@ export default function FeedScreen() {
         }}
         ListEmptyComponent={
           feed.isLoading ? (
-            <View className="flex-1 items-center justify-center">
+            <View className="flex-1 items-center justify-center py-16">
               <Spinner />
             </View>
           ) : (
-            <View className="flex-1 items-center justify-center gap-2 px-8">
+            <View className="flex-1 items-center justify-center gap-2 px-10 py-16">
               <Text className="text-5xl">🫥</Text>
-              <Text className="text-foreground font-semibold text-lg">まだ投稿がありません</Text>
+              <Text className="text-foreground font-extrabold text-lg">まだ投稿がありません</Text>
               <Text className="text-muted text-sm text-center">
                 {tags.length
                   ? "このタグの投稿はまだありません。"

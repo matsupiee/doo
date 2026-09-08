@@ -62,13 +62,13 @@ export function MediaUploadField({ kind, value, onChange }: Props) {
       {preview && kind === "photo" ? (
         <Image
           source={{ uri: preview }}
-          className="w-full h-56 rounded-lg"
+          className="w-full h-56 rounded-[20px]"
           resizeMode="cover"
         />
       ) : null}
 
       {preview && kind === "video" ? (
-        <View className="h-24 items-center justify-center rounded-lg border border-border">
+        <View className="h-24 items-center justify-center rounded-[20px] bg-surface-tertiary">
           <Ionicons name="videocam" size={28} color={mutedColor} />
           <Text className="text-muted text-xs mt-1">動画を選択しました</Text>
         </View>
@@ -76,7 +76,7 @@ export function MediaUploadField({ kind, value, onChange }: Props) {
 
       <View className="flex-row gap-2">
         <Button
-          className="flex-1"
+          className="flex-1 rounded-full"
           variant="secondary"
           isDisabled={isUploading}
           onPress={() => handle(() => pickFromLibrary(kind))}
@@ -84,7 +84,7 @@ export function MediaUploadField({ kind, value, onChange }: Props) {
           <Button.Label>ライブラリから選ぶ</Button.Label>
         </Button>
         <Button
-          className="flex-1"
+          className="flex-1 rounded-full"
           variant="secondary"
           isDisabled={isUploading}
           onPress={() => handle(() => captureWithCamera(kind))}

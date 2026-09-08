@@ -1,3 +1,111 @@
 @import "tailwindcss";
 @import "uniwind";
 @import "heroui-native/styles";
+
+/*
+ * doo のテーマ。ライラックの下地に濃いインディゴの文字、ビビッドな塗りのカードという
+ * 組み合わせで、e-learning 系のイラストレーティブな UI に寄せている。
+ * heroui-native のトークンを上書きするので、必ず heroui-native/styles の後に置く。
+ */
+@layer theme {
+  :root {
+    @variant light {
+      --background: #f5f3ff;
+      --foreground: #201a56;
+
+      --surface: #ffffff;
+      --surface-foreground: var(--foreground);
+      --surface-secondary: #ffffff;
+      --surface-secondary-foreground: var(--foreground);
+      --surface-tertiary: #f2f0fc;
+      --surface-tertiary-foreground: var(--foreground);
+
+      --overlay: #ffffff;
+      --overlay-foreground: var(--foreground);
+
+      --muted: #7c7899;
+
+      --default: #e6e2f8;
+      --default-foreground: var(--foreground);
+
+      --accent: #5b4be8;
+      --accent-foreground: #ffffff;
+
+      --field-background: #f2f0fc;
+      --field-foreground: var(--foreground);
+      --field-placeholder: #9b97b8;
+      --field-border: transparent;
+
+      --success: #2fbf71;
+      --success-foreground: #ffffff;
+      --warning: #f5c445;
+      --warning-foreground: #201a56;
+      --danger: #f2687c;
+      --danger-foreground: #ffffff;
+
+      --segment: #ffffff;
+      --segment-foreground: var(--foreground);
+
+      --border: #e7e3f8;
+      --separator: #e7e3f8;
+      --focus: var(--accent);
+      --link: var(--accent);
+    }
+
+    @variant dark {
+      --background: #100e24;
+      --foreground: #f4f2ff;
+
+      --surface: #1b1840;
+      --surface-foreground: var(--foreground);
+      --surface-secondary: #1b1840;
+      --surface-secondary-foreground: var(--foreground);
+      --surface-tertiary: #262252;
+      --surface-tertiary-foreground: var(--foreground);
+
+      --overlay: #1b1840;
+      --overlay-foreground: var(--foreground);
+
+      --muted: #a29cc9;
+
+      --default: #262252;
+      --default-foreground: var(--foreground);
+
+      --accent: #7c6bf5;
+      --accent-foreground: #ffffff;
+
+      --field-background: #262252;
+      --field-foreground: var(--foreground);
+      --field-placeholder: #837da8;
+      --field-border: transparent;
+
+      --success: #2fbf71;
+      --success-foreground: #ffffff;
+      --warning: #f5c445;
+      --warning-foreground: #201a56;
+      --danger: #f2687c;
+      --danger-foreground: #ffffff;
+
+      --segment: #262252;
+      --segment-foreground: var(--foreground);
+
+      --border: #2c2760;
+      --separator: #2c2760;
+      --focus: var(--accent);
+      --link: var(--accent);
+    }
+  }
+}
+
+@theme {
+  /* 入力欄とカードを大きく丸める。 */
+  --field-radius: calc(var(--radius) * 2.25);
+
+  /* カードの塗りに使う色。ライトとダークで同じ発色にする。 */
+  --color-brand: #5b4be8;
+  --color-brand-ink: #2a2072;
+  --color-sun: #f5c445;
+  --color-coral: #f98d8d;
+  --color-mint: #2fbf71;
+  --color-sky: #6fa8f5;
+}

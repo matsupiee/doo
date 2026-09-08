@@ -1,15 +1,30 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { Button, Card, Input, Spinner, TextField, useToast } from "heroui-native";
+import { Button, Input, Spinner, TextField, useToast } from "heroui-native";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
+import { Avatar } from "@/components/avatar";
+import { CompletionRow } from "@/components/completion-row";
 import { Container } from "@/components/container";
+import { MissionCard } from "@/components/mission-card";
+import { Pill } from "@/components/pill";
 import { formatWhen } from "@/components/post-card";
-import { TagChips } from "@/components/tag-chips";
+import { RoundIconButton } from "@/components/round-icon-button";
+import { SectionTitle } from "@/components/section-title";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { authClient } from "@/lib/auth-client";
+import { cardShadow } from "@/theme/tones";
 import { queryClient, trpc } from "@/utils/trpc";
+
+/** 一覧が空のときに出す、白い面のひとこと。 */
+function EmptyNote({ children }: { children: string }) {
+  return (
+    <View className="bg-surface rounded-[22px] p-5" style={cardShadow}>
+      <Text className="text-muted text-sm">{children}</Text>
+    </View>
+  );
+}
 
 export default function ProfileScreen() {
   const { toast } = useToast();
@@ -44,164 +59,155 @@ export default function ProfileScreen() {
   const joined = (participating.data ?? []).filter((item) => !item.isCreator);
 
   return (
-    <Container className="px-4" scrollViewProps={{ showsVerticalScrollIndicator: false }}>
-      <View className="gap-4 py-4">
-        <Card variant="secondary" className="p-4 gap-3">
+    <Container className="px-5" hasTabBar>
+      <View className="gap-7 pt-2">
+        <View className="gap-5">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-muted text-lg">プロフィール</Text>
+            <ThemeToggle />
+          </View>
+
           {isEditingName ? (
-            <View className="gap-3">
+            <View className="bg-surface rounded-[26px] p-5 gap-3" style={cardShadow}>
               <TextField>
                 <Input value={name} onChangeText={setName} placeholder="アカウント名" />
               </TextField>
               <View className="flex-row gap-2">
                 <Button
-                  size="sm"
+                  className="rounded-full flex-1"
                   isDisabled={!name.trim() || updateName.isPending}
                   onPress={() => updateName.mutate({ name: name.trim() })}
                 >
                   <Button.Label>保存</Button.Label>
                 </Button>
-                <Button size="sm" variant="secondary" onPress={() => setIsEditingName(false)}>
+                <Button
+                  className="rounded-full flex-1"
+                  variant="secondary"
+                  onPress={() => setIsEditingName(false)}
+                >
                   <Button.Label>キャンセル</Button.Label>
                 </Button>
               </View>
             </View>
           ) : (
-            <View className="flex-row items-center gap-3">
-              <View className="w-14 h-14 rounded-full bg-accent items-center justify-center">
-                <Text className="text-foreground text-xl font-bold">
-                  {me.data?.name.slice(0, 1).toUpperCase()}
-                </Text>
+            <View className="gap-4">
+              <View className="flex-row items-center gap-4">
+                <Avatar name={me.data?.name ?? "?"} image={me.data?.image} size={72} />
+                <View className="flex-1 shrink">
+                  <Text
+                    className="text-foreground text-[28px] font-extrabold leading-9"
+                    numberOfLines={1}
+                  >
+                    {me.data?.name}
+                  </Text>
+                  <Text className="text-muted text-sm" numberOfLines={1}>
+                    {me.data?.email}
+                  </Text>
+                </View>
+                <RoundIconButton
+                  name="pencil"
+                  variant="surface"
+                  size={40}
+                  accessibilityLabel="アカウント名を変える"
+                  onPress={() => {
+                    setName(me.data?.name ?? "");
+                    setIsEditingName(true);
+                  }}
+                />
               </View>
-              <View className="flex-1">
-                <Text className="text-foreground text-2xl font-bold">{me.data?.name}</Text>
-                <Text className="text-muted text-xs">
-                  達成 {me.data?.completedCount} ・ 参加中 {me.data?.participatingCount}
-                </Text>
+
+              <View className="flex-row gap-2">
+                <Pill label={`達成 ${me.data?.completedCount ?? 0}件`} variant="solid" />
+                <Pill label={`参加中 ${me.data?.participatingCount ?? 0}件`} />
               </View>
-              <Pressable
-                className="p-2 active:opacity-70"
-                onPress={() => {
-                  setName(me.data?.name ?? "");
-                  setIsEditingName(true);
-                }}
-              >
-                <Ionicons name="pencil" size={18} color="#888" />
-              </Pressable>
             </View>
           )}
-        </Card>
+        </View>
 
         <View className="gap-3">
-          <Text className="text-foreground text-lg font-semibold">やりたいこと</Text>
+          <SectionTitle title="やりたいこと" />
 
           {mine.isLoading ? <Spinner size="sm" /> : null}
 
           {!mine.isLoading && (mine.data?.length ?? 0) === 0 ? (
-            <Card variant="secondary" className="p-4">
-              <Text className="text-muted text-sm">
-                まだ登録していません。作成タブから登録してみよう。
-              </Text>
-            </Card>
+            <EmptyNote>まだ登録していません。作成タブから登録してみよう。</EmptyNote>
           ) : null}
 
           {mine.data?.map((item) => (
-            <Pressable
+            <MissionCard
               key={item.missionId}
-              className="active:opacity-70"
+              missionId={item.missionId}
+              title={item.title}
+              subtitle={formatWhen(item.createdAt)}
+              tags={item.tags}
+              stats={[`参加 ${item.participantCount}人`, `達成 ${item.completionCount}件`]}
               onPress={() =>
                 router.push({
                   pathname: "/mission/[missionId]",
                   params: { missionId: item.missionId },
                 })
               }
-            >
-              <Card variant="secondary" className="p-4 gap-1">
-                <Text className="text-foreground font-semibold">🎯 {item.title}</Text>
-                {item.tags.length ? (
-                  <View className="mt-1">
-                    <TagChips tags={item.tags} />
-                  </View>
-                ) : null}
-                <Text className="text-muted text-xs">
-                  参加 {item.participantCount}人・達成 {item.completionCount}件・
-                  {formatWhen(item.createdAt)}
-                </Text>
-              </Card>
-            </Pressable>
+            />
           ))}
         </View>
 
         <View className="gap-3">
-          <Text className="text-foreground text-lg font-semibold">参加しているやりたいこと</Text>
+          <SectionTitle title="参加しているやりたいこと" />
 
           {joined.length === 0 ? (
-            <Card variant="secondary" className="p-4">
-              <Text className="text-muted text-sm">
-                ホームで気になるやりたいことを見つけて参加しよう。
-              </Text>
-            </Card>
+            <EmptyNote>ホームで気になるやりたいことを見つけて参加しよう。</EmptyNote>
           ) : null}
 
           {joined.map((item) => (
-            <Pressable
+            <MissionCard
               key={item.missionId}
-              className="active:opacity-70"
+              missionId={item.missionId}
+              title={item.title}
+              subtitle={`登録: ${item.creatorName}`}
+              tags={item.tags}
+              stats={[`自分の達成 ${item.myCompletionCount}件`]}
               onPress={() =>
                 router.push({
                   pathname: "/mission/[missionId]",
                   params: { missionId: item.missionId },
                 })
               }
-            >
-              <Card variant="secondary" className="p-4 gap-1">
-                <Text className="text-foreground font-semibold">🎯 {item.title}</Text>
-                {item.tags.length ? (
-                  <View className="mt-1">
-                    <TagChips tags={item.tags} />
-                  </View>
-                ) : null}
-                <Text className="text-muted text-xs">
-                  登録: {item.creatorName}・自分の達成 {item.myCompletionCount}件
-                </Text>
-              </Card>
-            </Pressable>
+            />
           ))}
         </View>
 
-        <View className="gap-3 pb-8">
-          <Text className="text-foreground text-lg font-semibold">達成したこと</Text>
+        <View className="gap-3">
+          <SectionTitle title="達成したこと" />
 
           {(completions.data?.length ?? 0) === 0 ? (
-            <Card variant="secondary" className="p-4">
-              <Text className="text-muted text-sm">まだ達成の記録はありません。</Text>
-            </Card>
+            <EmptyNote>まだ達成の記録はありません。</EmptyNote>
           ) : null}
 
           {completions.data?.map((item) => (
-            <Card key={item.completionId} variant="secondary" className="p-4 gap-1">
-              <Text className="text-foreground font-semibold">🎯 {item.missionTitle}</Text>
-              <Text className="text-muted text-xs">
-                {item.participants.length > 1
+            <CompletionRow
+              key={item.completionId}
+              toneKey={item.missionId}
+              title={item.missionTitle}
+              subtitle={`${
+                item.participants.length > 1
                   ? `${item.participants.map((row) => row.name).join("・")} と共同達成`
-                  : "個人達成"}
-                ・{formatWhen(item.completedAt)}
-              </Text>
-              {item.caption ? (
-                <Text className="text-foreground text-sm mt-1">{item.caption}</Text>
-              ) : null}
-            </Card>
+                  : "個人達成"
+              }・${formatWhen(item.completedAt)}`}
+              caption={item.caption}
+            />
           ))}
-
-          <Button
-            variant="secondary"
-            onPress={() => {
-              authClient.signOut();
-              queryClient.clear();
-            }}
-          >
-            <Button.Label>サインアウト</Button.Label>
-          </Button>
         </View>
+
+        <Button
+          className="rounded-full h-14"
+          variant="secondary"
+          onPress={() => {
+            authClient.signOut();
+            queryClient.clear();
+          }}
+        >
+          <Button.Label>サインアウト</Button.Label>
+        </Button>
       </View>
     </Container>
   );

@@ -1,49 +1,20 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { useThemeColor } from "heroui-native";
 
-import { ThemeToggle } from "@/components/theme-toggle";
+import { FloatingTabBar } from "@/components/floating-tab-bar";
 
+/**
+ * ヘッダーは置かず、各画面が自分で大きな見出しを描く。
+ * タブバーは画面の下に浮かぶピルに差し替える。
+ */
 export default function TabLayout() {
-  const foreground = useThemeColor("foreground");
-  const background = useThemeColor("background");
-
   return (
     <Tabs
-      screenOptions={{
-        headerStyle: { backgroundColor: background },
-        headerTintColor: foreground,
-        headerTitleStyle: { color: foreground, fontWeight: "600" },
-        headerRight: () => <ThemeToggle />,
-        tabBarStyle: { backgroundColor: background },
-      }}
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => <FloatingTabBar {...props} />}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "ホーム",
-          headerTitle: "みんなの投稿",
-          tabBarIcon: ({ color, size }) => <Ionicons name="flame" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="create"
-        options={{
-          title: "作成",
-          headerTitle: "やりたいことを登録する",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="add-circle" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "プロフィール",
-          headerTitle: "プロフィール",
-          tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
-        }}
-      />
+      <Tabs.Screen name="index" options={{ title: "ホーム" }} />
+      <Tabs.Screen name="create" options={{ title: "作成" }} />
+      <Tabs.Screen name="profile" options={{ title: "自分" }} />
     </Tabs>
   );
 }

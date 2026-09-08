@@ -1,11 +1,14 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { Button, Card, Chip, Input, Label, Spinner, TextField, useToast } from "heroui-native";
+import { Button, Input, Label, Spinner, TextField, useToast } from "heroui-native";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Container } from "@/components/container";
+import { Pill } from "@/components/pill";
+import { RoundIconButton } from "@/components/round-icon-button";
+import { ScreenHeader } from "@/components/screen-header";
+import { cardShadow } from "@/theme/tones";
 import { queryClient, trpc } from "@/utils/trpc";
 
 const MAX_TAGS = 10;
@@ -52,9 +55,17 @@ export default function CreateMissionScreen() {
   const canSubmit = title.trim().length > 0 && !createMission.isPending;
 
   return (
-    <Container className="px-4" scrollViewProps={{ showsVerticalScrollIndicator: false }}>
-      <View className="gap-4 py-4">
-        <Card variant="secondary" className="p-4 gap-3">
+    <Container className="px-5" hasTabBar>
+      <View className="gap-6 pt-2">
+        <ScreenHeader
+          eyebrow={<Text className="text-muted text-lg">はじめよう</Text>}
+          title={"やりたいことを\n登録する"}
+        />
+
+        <View
+          className="bg-surface rounded-[26px] p-5 gap-4"
+          style={cardShadow}
+        >
           <TextField>
             <Label>やりたいこと</Label>
             <Input
@@ -74,16 +85,18 @@ export default function CreateMissionScreen() {
               multiline
               numberOfLines={4}
               maxLength={500}
-              style={{ minHeight: 88, textAlignVertical: "top" }}
+              style={{ minHeight: 96, textAlignVertical: "top" }}
             />
           </TextField>
-        </Card>
+        </View>
 
-        <Card variant="secondary" className="p-4 gap-3">
-          <Card.Title>タグ（任意・複数可）</Card.Title>
-          <Text className="text-muted text-xs">
-            自由に書けます。フィードの絞り込みに使われます。
-          </Text>
+        <View className="bg-surface rounded-[26px] p-5 gap-4" style={cardShadow}>
+          <View className="gap-1">
+            <Text className="text-foreground text-lg font-extrabold">タグ（任意・複数可）</Text>
+            <Text className="text-muted text-xs">
+              自由に書けます。ホームの絞り込みに使われます。
+            </Text>
+          </View>
 
           <View className="flex-row items-center gap-2">
             <View className="flex-1">
@@ -98,9 +111,12 @@ export default function CreateMissionScreen() {
                 />
               </TextField>
             </View>
-            <Button size="sm" variant="secondary" isDisabled={!tagDraft.trim()} onPress={addTag}>
-              <Button.Label>追加</Button.Label>
-            </Button>
+            <RoundIconButton
+              name="add"
+              variant="solid"
+              accessibilityLabel="タグを追加する"
+              onPress={addTag}
+            />
           </View>
 
           {tags.length ? (
@@ -111,25 +127,22 @@ export default function CreateMissionScreen() {
                   onPress={() => setTags((current) => current.filter((value) => value !== tag))}
                   className="active:opacity-70"
                 >
-                  <Chip variant="primary" color="success" size="sm">
-                    <Chip.Label>{tag} ✕</Chip.Label>
-                  </Chip>
+                  <Pill label={`${tag} ✕`} variant="solid" />
                 </Pressable>
               ))}
             </View>
           ) : null}
-        </Card>
+        </View>
 
-        <Card variant="secondary" className="p-4 flex-row gap-3">
-          <Ionicons name="information-circle-outline" size={20} color="#888" />
-          <Text className="text-muted text-xs flex-1">
+        <View className="bg-surface-tertiary rounded-[26px] p-5">
+          <Text className="text-muted text-xs leading-5">
             登録すると自分が参加者になります。ほかのユーザーからも見えて、あとから参加してもらえます。
           </Text>
-        </Card>
+        </View>
 
         <Button
+          className="rounded-full h-14"
           isDisabled={!canSubmit}
-          className="mb-8"
           onPress={() =>
             createMission.mutate({
               title: title.trim(),
@@ -141,7 +154,7 @@ export default function CreateMissionScreen() {
           {createMission.isPending ? (
             <Spinner size="sm" color="default" />
           ) : (
-            <Button.Label>やりたいことを登録する</Button.Label>
+            <Button.Label className="font-extrabold">やりたいことを登録する</Button.Label>
           )}
         </Button>
       </View>
