@@ -2,9 +2,6 @@
 
 - 日付: 2026-09-08
 - ステータス: 採用（スキーマのみ先行、API/UI は後続）
-- 置き換える ADR: [「一緒にやろう」の誘いを assignment 行で表す](2026-09-07-coop-invite-via-assignment.md)、
-  [相手のいないミッションを作れるようにする](2026-09-04-mission-without-assignee.md)、
-  [ミッションのカテゴリを中間テーブルで持つ](2026-09-04-mission-categories-join-table.md)
 
 ## 背景
 
@@ -26,14 +23,14 @@
 
 達成を**独立したテーブル**にし、参加者を中間テーブルでぶら下げる。
 
-| テーブル | 役割 |
-|---|---|
-| `mission` | やりたいこと本体。作成者は `creator_id` |
-| `mission_participant` | そのミッションを「やる」人。join はこの行の作成 |
-| `mission_completion` | 達成イベント1件。ミッションと投稿と達成日時を持つ |
-| `mission_completion_participant` | その達成を誰が達成したか |
-| `post` | フィード投稿。達成報告にも進捗報告にも使う |
-| `mission_tag` | ミッションに付ける自由入力のタグ |
+| テーブル                         | 役割                                              |
+| -------------------------------- | ------------------------------------------------- |
+| `mission`                        | やりたいこと本体。作成者は `creator_id`           |
+| `mission_participant`            | そのミッションを「やる」人。join はこの行の作成   |
+| `mission_completion`             | 達成イベント1件。ミッションと投稿と達成日時を持つ |
+| `mission_completion_participant` | その達成を誰が達成したか                          |
+| `post`                           | フィード投稿。達成報告にも進捗報告にも使う        |
+| `mission_tag`                    | ミッションに付ける自由入力のタグ                  |
 
 **個人達成と共同達成の区別は `mission_completion_participant` の行数で表す。**
 1行なら個人達成、複数行なら共同達成であり、テーブルもフラグも分けない。
