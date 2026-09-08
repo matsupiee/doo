@@ -59,9 +59,3 @@
 ## 対応するテスト
 
 後続で `packages/api/test/` に追加する。
-
-## 関連
-
-- [他の人のやりたいことに参加する](./participate-in-mission.md)
-- [達成を記録して投稿する](./record-completion.md)
-- [ADR: 「やりたいこと」に参加して、達成を共同で記録する](../adr/2026-09-08-mission-participation-and-shared-completion.md)

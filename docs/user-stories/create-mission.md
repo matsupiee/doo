@@ -46,7 +46,3 @@
 ## 対応するテスト
 
 後続で `packages/api/test/mission.test.ts` に追加する。
-
-## 関連
-
-- [ADR: 「やりたいこと」に参加して、達成を共同で記録する](../adr/2026-09-08-mission-participation-and-shared-completion.md)

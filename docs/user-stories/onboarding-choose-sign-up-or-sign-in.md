@@ -26,10 +26,3 @@
    - タブ（ホーム / 作成 / プロフィール）に切り替わる。
 7. サインアウトする。
    - オンボーディング画面に戻る。
-
-## 実装メモ
-
-- ルーティングは `apps/native/app/(auth)/` に分離し、`app/_layout.tsx` の `Stack.Protected`
-  でログイン状態によって `(auth)` と `(tabs)` を出し分ける。
-- 入力フォーム本体は `components/sign-in.tsx` / `components/sign-up.tsx`
-  （画面側が見出しとリンクを持つ）。
