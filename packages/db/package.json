@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "db:local": "turso dev --db-file local.db",
+    "db:local": "turso dev --db-file ../../local.db",
     "db:push": "drizzle-kit push",
     "db:seed": "bun --env-file=../../apps/server/.env run src/seed/index.ts",
     "db:generate": "drizzle-kit generate",

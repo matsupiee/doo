@@ -89,6 +89,13 @@ iOS シミュレーターはホストの `localhost` をそのまま解決でき
 `turso dev` でローカル DB サーバーを立てる場合は、`bun run db:local` を
 起動したうえで `DATABASE_URL` をそのエンドポイントに向ける。
 
+DB ファイルは**リポジトリルートの `local.db` 1つ**を使う。`DATABASE_URL` の
+`file:../../local.db` は実行するプロセスの cwd 基準で解決され、`apps/server` と
+`packages/db`（どちらもルートから2階層下）の両方から読まれる前提になっている。
+`file:local.db` のように書き換えると、サーバーと `db:*` コマンドが別々のファイルを
+掴んでしまう。`.gitignore` の `local.db` は全階層にマッチするので、
+取り違えても git では気づけない点に注意。
+
 ## Project Structure
 
 ```
