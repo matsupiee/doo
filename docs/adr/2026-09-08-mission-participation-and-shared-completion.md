@@ -7,21 +7,21 @@
 
 アプリのコンセプトを次のように変更する。
 
-- ユーザーは最初に**自分のやりたいこと**を登録する
-- **達成したら投稿する**
-- 他のユーザーは、やりたいことに**あとから参加できる**
-- 達成は**共同達成として記録できる**。1人で達成した場合は個人達成として記録する
+- ユーザーは最初に自分のやりたいことを登録する
+- 達成したら投稿する
+- 他のユーザーは、やりたいことにあとから参加できる
+- 達成は共同達成として記録できる。1人で達成した場合は個人達成として記録する
 
 旧コンセプトの「ミッションを他人に渡す・リレーで回す」は廃止する。これにより
 `assignment` / `relay` / `mission_category` は不要になった。
 
-とくに設計上の要点は**達成が1人に紐づかない**ことで、旧モデルの
+とくに設計上の要点は達成が1人に紐づかないことで、旧モデルの
 「1人分のミッション＝ `assignment`、その証拠＝ `post`」という 1:1 の構造では
 共同達成を表現できない。
 
 ## 決定
 
-達成を**独立したテーブル**にし、参加者を中間テーブルでぶら下げる。
+達成を独立したテーブルにし、参加者を中間テーブルでぶら下げる。
 
 | テーブル                         | 役割                                              |
 | -------------------------------- | ------------------------------------------------- |
@@ -32,7 +32,7 @@
 | `post`                           | フィード投稿。達成報告にも進捗報告にも使う        |
 | `mission_tag`                    | ミッションに付ける自由入力のタグ                  |
 
-**個人達成と共同達成の区別は `mission_completion_participant` の行数で表す。**
+個人達成と共同達成の区別は `mission_completion_participant` の行数で表す。
 1行なら個人達成、複数行なら共同達成であり、テーブルもフラグも分けない。
 
 `mission_participant` / `mission_completion_participant` は複合主キー
@@ -41,7 +41,7 @@
 
 ### 同じミッションの複数回達成を許可する
 
-`mission_completion` は状態ではなく**イベント**として扱い、1つのミッションに対して
+`mission_completion` は状態ではなくイベントとして扱い、1つのミッションに対して
 何件でも作れる。「毎朝走る」のような繰り返し前提のやりたいことを表現するため。
 `(mission_id, user_id)` の一意制約は張らない。
 
@@ -75,7 +75,11 @@ libsql は SQLite と違い `PRAGMA foreign_keys` が既定で ON であるこ�
 
 `mission_participant` への FK は cascade なので、参加をやめるとその人の
 `mission_completion_participant` の行も道連れになる。過去の達成が消えるのは
-記録として不正なので、**達成が1件でもある参加者の退出を API で禁止する**。
+記録として不正なので、自分の達成が1件でもある参加者の退出を API で禁止する。
+
+消えるのは退出する本人の行だけで、同じ達成に並んでいる他の参加者の行は残る。
+つまり禁止の判定は「そのミッションに達成があるか」ではなく「その人の達成があるか」で行う。
+他の人が達成しているだけなら、自分は抜けられる。
 
 これにより cascade が実際に走るのはミッションそのものを削除したときだけになり、
 そのときは達成ごと消えるのが正しい挙動になる。`left_at` による論理削除は採らない
@@ -89,55 +93,55 @@ libsql は SQLite と違い `PRAGMA foreign_keys` が既定で ON であるこ�
 
 コンセプト変更のコミットで入った定義のうち、次を直した。
 
-- **`schema/index.ts` に `mission_participant` / `mission_completion` /
-  `mission_completion_participant` が載っていなかった。** `packages/db/src/index.ts` は
+- `schema/index.ts` に `mission_participant` / `mission_completion` /
+  `mission_completion_participant` が載っていなかった。`packages/db/src/index.ts` は
   `import * as schema from "./schema"` を drizzle に渡しているので、barrel に無いテーブルは
   実行時のスキーマに登録されず、`db.query.*` からもリレーショナルクエリからも見えない。
   drizzle-kit はディレクトリを直接読むためマイグレーションだけは出る、という気づきにくい
   食い違いになっていた。
-- **`mission_completion` / `mission_completion_participant` に `relations()` が無かった。**
+- `mission_completion` / `mission_completion_participant` に `relations()` が無かった。
   それぞれ mission・post・participants・user への関連を定義した。
-- **`post` から達成への逆向きの関連が無かった。** `post.completion` を追加（達成報告の投稿なら
+- `post` から達成への逆向きの関連が無かった。`post.completion` を追加（達成報告の投稿なら
   1件、進捗報告の投稿なら無し）。
-- **`user` の関連が `sessions` / `accounts` / `missionParticipants` だけだった。**
+- `user` の関連が `sessions` / `accounts` / `missionParticipants` だけだった。
   `createdMissions` / `posts` / `postReactions` / `completionParticipations` を追加。
-- **`mission` に `completions` が無かった。**
-- **`mission_completion.completed_at` が `mode: "timestamp"`（秒）だった。** 他のカラムは
+- `mission` に `completions` が無かった。
+- `mission_completion.completed_at` が `mode: "timestamp"`（秒）だった。他のカラムは
   すべて `timestamp_ms` なので、同じ値を秒とミリ秒で読む事故になる。`timestamp_ms` に揃えた。
-- **`mission_completion.post_id` が nullable + `set null` だった。** 「達成時には必ず post を
+- `mission_completion.post_id` が nullable + `set null` だった。「達成時には必ず post を
   行う」というコメントと矛盾するので `notNull` + `cascade` にし、
   `(post_id)` に unique index を張った（1つの投稿が2つの達成を表すことはない）。
-- **索引が不足していた。** `mission_completion` の `mission_id` / `completed_at`、
+- 索引が不足していた。`mission_completion` の `mission_id` / `completed_at`、
   `mission_completion_participant` の `user_id`（プロフィールの達成一覧用）を追加。
 - `mission_completion_participant` にだけ `created_at` / `updated_at` が無かったので揃えた。
 
 ## 理由
 
 - 達成を独立したテーブルにすると、共同達成が「1件の達成に参加者が N 人」という自然な形になる。
-  個人達成は N=1 なので、**同じ導線・同じ集計コードのまま**扱える。
+  個人達成は N=1 なので、同じ導線・同じ集計コードのまま扱える。
 - 参加者を `post` に持たせる案（投稿に複数の著者）だと、達成していないが投稿はする
   （進捗報告）ケースと混ざる。達成と投稿は別の概念として分ける。
 - 参加を `mission_participant` の1行にすると、複合主キーだけで重複参加を防げる。
 
 ## 却下した選択肢
 
-- **`post` に参加者をぶら下げて達成を表す**: 進捗報告の投稿と達成の投稿が同じ構造になり、
+- `post` に参加者をぶら下げて達成を表す: 進捗報告の投稿と達成の投稿が同じ構造になり、
   「このミッションは誰がいつ達成したか」を引くのに投稿の種別で分岐が要る。
-- **`mission_completion` に `user_id` を持たせ、共同達成は同じ `group_id` で束ねる**:
+- `mission_completion` に `user_id` を持たせ、共同達成は同じ `group_id` で束ねる:
   結局グループを表す実体が要るので、それが `mission_completion` そのものである方が単純。
-- **`mission_participant` に代理キー `id` を足し、`mission_completion_participant` が
-  `mission_participant_id` 単体で参照する**: 「どこかのミッションの参加者である」ことしか
-  保証できず、**その達成と同じミッションの参加者かどうかは検証されない**。
+- `mission_participant` に代理キー `id` を足し、`mission_completion_participant` が
+  `mission_participant_id` 単体で参照する: 「どこかのミッションの参加者である」ことしか
+  保証できず、その達成と同じミッションの参加者かどうかは検証されない。
   別ミッションの参加者行を指した達成参加者を作れてしまう。複合 FK なら
   `mission_id` が共有されるのでこの穴が塞がる。
-- **個人達成と共同達成をテーブルで分ける**: 集計とフィードの両方で常に2本のクエリが必要になる。
-- **旧 `assignment` を残して流用する**: 「渡す・受ける」という意味を引きずったカラム
+- 個人達成と共同達成をテーブルで分ける: 集計とフィードの両方で常に2本のクエリが必要になる。
+- 旧 `assignment` を残して流用する: 「渡す・受ける」という意味を引きずったカラム
   （`assigner_id` / `picked_by` / `relay_*`）がコンセプトと合わない。
 
 ## 影響
 
 - `assignment` / `relay` / `mission_category` テーブルは廃止。旧 ADR 3件は本 ADR で置き換える。
-- **マイグレーションは未生成**。`drizzle-kit generate` が「新テーブルは旧テーブルの
+- マイグレーションは未生成。`drizzle-kit generate` が「新テーブルは旧テーブルの
   リネームか？」を対話で聞いてくるため、`docs/rules/database-pattern.md` の
   「インタラクティブな質問がある場合はユーザーに確認を求める」に従い、生成は行っていない。
   リネームではなく新規作成として答える必要がある。
@@ -157,7 +161,7 @@ libsql は SQLite と違い `PRAGMA foreign_keys` が既定で ON であるこ�
 - 参加者0人のミッションは存在しない。参加者一覧の見え方を別途決める必要がなくなる。
 - 作成者は自分のやりたいことでそのまま達成を記録できる（達成参加者はミッション参加者に
   限られるので、作成者が参加者でないと自分の達成すら記録できない）。
-- **作成者は自分のやりたいことから抜けられない。** API が退出を拒否する。やめるときは
+- 作成者は自分のやりたいことから抜けられない。API が退出を拒否する。やめるときは
   ミッションごと消す。参加者を1人も持たないミッションが生まれないようにするため。
 
 `mission.creator_id` は残す。作成者と参加者は「誰が言い出したか」の情報として別物であり、
@@ -175,7 +179,7 @@ libsql は SQLite と違い `PRAGMA foreign_keys` が既定で ON であるこ�
 ### 非参加者を共同達成に含めるときは、その場で参加者にする
 
 その場で誘われた人など、参加者でない人を共同達成に含めたいときは、達成の記録と
-**同じトランザクションで `mission_participant` の行を作ってから** 達成参加者にする。
+同じトランザクションで `mission_participant` の行を作ってから達成参加者にする。
 「先に参加してもらう」は求めない。
 
 達成参加者がミッション参加者であることを DB の複合 FK で担保している以上、この自動的な
@@ -198,9 +202,9 @@ libsql は SQLite と違い `PRAGMA foreign_keys` が既定で ON であるこ�
 - 自分の操作で自分に通知は作らない（自分の投稿に自分でリアクションした場合など）。
 - 送信手段はアプリ内の通知一覧のみ。プッシュ通知は範囲外。
 
-**このテーブルはまだスキーマに入っていない。** 追加とマイグレーション生成は別 PR で行う。
+このテーブルはまだスキーマに入っていない。追加とマイグレーション生成は別 PR で行う。
 
 ## 積み残し（後続で決める）
 
-- **タグが自由入力になった。** 旧 `mission_category` の固定 enum をやめたため、表記ゆれで
+- タグが自由入力になった。旧 `mission_category` の固定 enum をやめたため、表記ゆれで
   絞り込みが効かなくなる。候補のサジェストか、正規化のルールが要る。
