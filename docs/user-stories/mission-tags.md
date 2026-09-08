@@ -32,7 +32,7 @@
 
 自由入力にしたことで **表記ゆれ**（「おでかけ」「お出かけ」「外出」）が起きる。
 候補のサジェストか正規化のルールが要る
-（[ADR の積み残し](../adr/2026-09-08-mission-join-and-shared-completion.md)）。
+（[ADR の積み残し](../adr/2026-09-08-mission-participation-and-shared-completion.md)）。
 それまでは [タグでの絞り込み](./filter-feed-by-tag.md) は完全一致で動く。
 
 ## 動作確認の手順
