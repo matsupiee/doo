@@ -1,21 +1,21 @@
 import { db } from "../index";
 import {
-  assignment,
   mission,
-  missionCategory,
+  missionCompletion,
+  missionCompletionParticipant,
+  missionParticipant,
+  missionTag,
   post,
   postReaction,
-  relay,
   user,
 } from "../schema";
 
 /**
- * Fills the database with the cast and the missions the user stories in
- * `docs/user-stories/` are written against.
+ * `docs/user-stories/` のユーザーストーリーを手で追うためのデータを入れる。
  *
- * Run it with `bun run db:seed`. It wipes the mission-side tables first so the
- * result is the same every time; accounts and their credentials are left alone
- * unless a seeded user with the same e-mail already exists.
+ * `bun run db:seed` で実行する。毎回同じ結果になるように、やりたいこと側の
+ * テーブルは先に消す。アカウントは消さないので、同じメールアドレスの
+ * シードユーザーがいれば再利用する。
  */
 
 const PEOPLE = [
@@ -52,45 +52,94 @@ async function seedPeople() {
   return ids;
 }
 
-/** Children first, so the foreign keys never complain. */
+/** 子から先に消す。外部キーに引っかからないように。 */
 async function clearMissions() {
+  await db.delete(missionCompletionParticipant);
+  await db.delete(missionCompletion);
   await db.delete(postReaction);
   await db.delete(post);
-  await db.delete(assignment);
-  await db.delete(relay);
-  await db.delete(missionCategory);
+  await db.delete(missionParticipant);
+  await db.delete(missionTag);
   await db.delete(mission);
 }
 
+/** 作成者は同時に参加者になる。API の mission.create と同じ形にそろえる。 */
 async function createMission(input: {
   title: string;
   description?: string;
-  proofHint?: string;
   creatorId: string;
-  categories: string[];
+  tags: string[];
 }) {
   const [created] = await db
     .insert(mission)
     .values({
       title: input.title,
       description: input.description ?? null,
-      proofHint: input.proofHint ?? null,
       creatorId: input.creatorId,
     })
     .returning({ id: mission.id });
   if (!created) throw new Error(`Could not create the seed mission ${input.title}`);
 
-  if (input.categories.length) {
-    await db.insert(missionCategory).values(
-      input.categories.map((category) => ({
-        missionId: created.id,
-        category: category as "cooking",
-      })),
-    );
+  await db.insert(missionParticipant).values({ missionId: created.id, userId: input.creatorId });
+
+  if (input.tags.length) {
+    await db
+      .insert(missionTag)
+      .values(input.tags.map((title) => ({ missionId: created.id, title })));
   }
 
   return created.id;
 }
+
+async function join(missionId: string, userIds: string[]) {
+  if (!userIds.length) return;
+  await db.insert(missionParticipant).values(userIds.map((userId) => ({ missionId, userId })));
+}
+
+/** 達成は必ず投稿を1件持つ。達成参加者が1人なら個人達成、複数人なら共同達成。 */
+async function recordCompletion(input: {
+  missionId: string;
+  authorId: string;
+  participantIds: string[];
+  caption: string;
+  mediaType?: "photo" | "video" | "text";
+  mediaUrl?: string;
+  completedAt?: Date;
+}) {
+  const [createdPost] = await db
+    .insert(post)
+    .values({
+      missionId: input.missionId,
+      authorId: input.authorId,
+      mediaType: input.mediaType ?? "text",
+      mediaUrl: input.mediaUrl ?? null,
+      caption: input.caption,
+    })
+    .returning({ id: post.id });
+  if (!createdPost) throw new Error("Could not create the seed post");
+
+  const [completion] = await db
+    .insert(missionCompletion)
+    .values({
+      missionId: input.missionId,
+      postId: createdPost.id,
+      completedAt: input.completedAt ?? new Date(),
+    })
+    .returning({ id: missionCompletion.id });
+  if (!completion) throw new Error("Could not create the seed completion");
+
+  await db.insert(missionCompletionParticipant).values(
+    input.participantIds.map((userId) => ({
+      completionId: completion.id,
+      missionId: input.missionId,
+      userId,
+    })),
+  );
+
+  return { completionId: completion.id, postId: createdPost.id };
+}
+
+const DAY = 24 * 60 * 60 * 1000;
 
 export async function seed() {
   const people = await seedPeople();
@@ -102,93 +151,83 @@ export async function seed() {
 
   await clearMissions();
 
-  // 1. A multi-category mission handed to two friends.
+  // 1. 参加者が複数いて、共同達成が1件あるやりたいこと。
   const paella = await createMission({
-    title: "パエリアを作ってみて",
-    description: "サフランは無くてもいい。とにかく米を炊いて。",
-    proofHint: "完成した皿の写真を撮って",
+    title: "パエリアを作る",
+    description: "サフランは無くてもいい。とにかく米を炊く。",
     creatorId: id("aoi"),
-    categories: ["cooking", "fun"],
+    tags: ["料理", "ネタ"],
   });
-  await db.insert(assignment).values([
-    { missionId: paella, assigneeId: id("haru"), assignerId: id("aoi"), pickedBy: "nominated" },
-    { missionId: paella, assigneeId: id("mio"), assignerId: id("aoi"), pickedBy: "nominated" },
-  ]);
+  await join(paella, [id("haru"), id("mio")]);
+  const paellaCompletion = await recordCompletion({
+    missionId: paella,
+    authorId: id("aoi"),
+    participantIds: [id("aoi"), id("haru")],
+    caption: "3人ぶんの鍋で作った。おこげがうまい。",
+    completedAt: new Date(Date.now() - 2 * DAY),
+  });
+  await db.insert(postReaction).values({ postId: paellaCompletion.postId, userId: id("mio") });
 
-  // 2. A mission created with nobody on it — the "あとで渡す" case.
+  // 2. 繰り返し達成するやりたいこと。同じミッションに達成が2件ぶら下がる。
+  const run = await createMission({
+    title: "毎朝走る",
+    description: "距離は問わない。走ったら記録する。",
+    creatorId: id("haru"),
+    tags: ["運動"],
+  });
+  await recordCompletion({
+    missionId: run,
+    authorId: id("haru"),
+    participantIds: [id("haru")],
+    caption: "3km。まだ寒い。",
+    completedAt: new Date(Date.now() - DAY),
+  });
+  await recordCompletion({
+    missionId: run,
+    authorId: id("haru"),
+    participantIds: [id("haru")],
+    caption: "今日は5km走れた。",
+  });
+
+  // 3. まだ誰も達成していない、作成者ひとりのやりたいこと。参加の動作確認に使う。
   await createMission({
     title: "近所の坂を全部のぼる",
-    description: "地図に載ってない坂でもいい。",
+    description: "地図に載っていない坂でもいい。",
     creatorId: id("aoi"),
-    categories: ["sports", "outing"],
+    tags: ["運動", "おでかけ"],
   });
 
-  // 3. A mission with no category at all, taken by its creator.
-  const noCategory = await createMission({
+  // 4. タグが1つも付いていないやりたいこと。進捗報告だけがある。
+  const write = await createMission({
     title: "とりあえず何か書く",
     creatorId: id("mio"),
-    categories: [],
+    tags: [],
   });
-  await db
-    .insert(assignment)
-    .values({ missionId: noCategory, assigneeId: id("mio"), pickedBy: "self" });
+  await db.insert(post).values({
+    missionId: write,
+    authorId: id("mio"),
+    mediaType: "text",
+    caption: "書き出しだけ決めた。まだ達成ではない。",
+  });
 
-  // 4. A relay that has already run one leg, so the feed and the tree have content.
-  const relayMissionId = await createMission({
+  // 5. 作成者が達成していないやりたいこと。退出できる参加者がいる状態を作る。
+  const station = await createMission({
     title: "知らない駅で降りて写真を撮る",
-    description: "普段乗り換えるだけの駅でもOK。",
-    proofHint: "駅名がわかる写真",
+    description: "普段は乗り換えるだけの駅でもいい。",
     creatorId: id("ren"),
-    categories: ["outing", "creative"],
+    tags: ["おでかけ", "つくる"],
   });
-  const [relayRow] = await db
-    .insert(relay)
-    .values({ missionId: relayMissionId, starterId: id("ren"), maxNominations: 2 })
-    .returning({ id: relay.id });
-  if (!relayRow) throw new Error("Could not create the seed relay");
-
-  const [firstLeg] = await db
-    .insert(assignment)
-    .values({
-      missionId: relayMissionId,
-      assigneeId: id("ren"),
-      relayId: relayRow.id,
-      depth: 0,
-      pickedBy: "self",
-      status: "cleared",
-      relayHandoff: "nominated",
-      clearedAt: new Date(),
-    })
-    .returning({ id: assignment.id });
-  if (!firstLeg) throw new Error("Could not create the seed relay leg");
-
-  const [firstPost] = await db
-    .insert(post)
-    .values({
-      assignmentId: firstLeg.id,
-      missionId: relayMissionId,
-      authorId: id("ren"),
-      mediaType: "text",
-      caption: "各駅停車で3つ先まで行った",
-    })
-    .returning({ id: post.id });
-  if (!firstPost) throw new Error("Could not create the seed post");
-
-  await db.insert(postReaction).values({ postId: firstPost.id, userId: id("aoi") });
-
-  await db.insert(assignment).values({
-    missionId: relayMissionId,
-    assigneeId: id("haru"),
-    assignerId: id("ren"),
-    relayId: relayRow.id,
-    parentAssignmentId: firstLeg.id,
-    depth: 1,
-    pickedBy: "nominated",
+  await join(station, [id("mio")]);
+  await recordCompletion({
+    missionId: station,
+    authorId: id("mio"),
+    participantIds: [id("mio")],
+    caption: "各駅停車で3つ先まで行った。",
   });
 
   return {
     users: PEOPLE.map((person) => ({ ...person, id: id(person.key) })),
-    missions: 4,
+    missions: 5,
   };
 }
 

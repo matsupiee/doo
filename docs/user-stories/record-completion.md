@@ -1,6 +1,6 @@
 # 達成を記録して投稿する（個人・共同）
 
-> ステータス: スキーマ済み / API・UI は後続
+> ステータス: 実装済み。通知だけ後続（[通知で気づく](./notifications.md)）
 
 ## ストーリー
 
@@ -64,4 +64,9 @@
 
 ## 対応するテスト
 
-後続で `packages/api/test/` に追加する。
+- `packages/api/test/mission.test.ts` の「mission.complete — 達成を記録する」
+- `packages/api/test/feed.test.ts` の「feed.list — 投稿の中身」
+
+```bash
+bun run test
+```

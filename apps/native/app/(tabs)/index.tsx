@@ -1,21 +1,23 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Chip, Spinner } from "heroui-native";
 import { useCallback, useState } from "react";
 import { FlatList, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PostCard, type FeedPost } from "@/components/post-card";
-import { MISSION_CATEGORIES, type MissionCategory } from "@/lib/mission-categories";
 import { trpc } from "@/utils/trpc";
 
 export default function FeedScreen() {
   const insets = useSafeAreaInsets();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [categories, setCategories] = useState<MissionCategory[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+
+  /** 固定のカテゴリ一覧ではなく、実際に使われているタグを並べる。 */
+  const tagOptions = useQuery(trpc.feed.tags.queryOptions());
 
   const feed = useInfiniteQuery(
     trpc.feed.list.infiniteQueryOptions(
-      { limit: 20, categories },
+      { limit: 20, tags },
       { getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined },
     ),
   );
@@ -24,40 +26,42 @@ export default function FeedScreen() {
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await feed.refetch();
+    await Promise.all([feed.refetch(), tagOptions.refetch()]);
     setIsRefreshing(false);
-  }, [feed]);
+  }, [feed, tagOptions]);
 
   return (
     <View className="flex-1 bg-background">
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}
-        className="grow-0"
-      >
-        {MISSION_CATEGORIES.map((option) => {
-          const isSelected = categories.includes(option.value);
-          return (
-            // `Chip` is itself a Pressable, so it takes `onPress` directly.
-            <Chip
-              key={option.value}
-              variant={isSelected ? "primary" : "secondary"}
-              color={isSelected ? "success" : "default"}
-              size="sm"
-              onPress={() =>
-                setCategories((current) =>
-                  current.includes(option.value)
-                    ? current.filter((value) => value !== option.value)
-                    : [...current, option.value],
-                )
-              }
-            >
-              <Chip.Label>{option.label}</Chip.Label>
-            </Chip>
-          );
-        })}
-      </ScrollView>
+      {tagOptions.data?.length ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}
+          className="grow-0"
+        >
+          {tagOptions.data.map((option) => {
+            const isSelected = tags.includes(option.title);
+            return (
+              // `Chip` is itself a Pressable, so it takes `onPress` directly.
+              <Chip
+                key={option.title}
+                variant={isSelected ? "primary" : "secondary"}
+                color={isSelected ? "success" : "default"}
+                size="sm"
+                onPress={() =>
+                  setTags((current) =>
+                    current.includes(option.title)
+                      ? current.filter((value) => value !== option.title)
+                      : [...current, option.title],
+                  )
+                }
+              >
+                <Chip.Label>{option.title}</Chip.Label>
+              </Chip>
+            );
+          })}
+        </ScrollView>
+      ) : null}
 
       <FlatList
         data={posts}
@@ -83,11 +87,11 @@ export default function FeedScreen() {
           ) : (
             <View className="flex-1 items-center justify-center gap-2 px-8">
               <Text className="text-5xl">🫥</Text>
-              <Text className="text-foreground font-semibold text-lg">まだ達成がありません</Text>
+              <Text className="text-foreground font-semibold text-lg">まだ投稿がありません</Text>
               <Text className="text-muted text-sm text-center">
-                {categories.length
-                  ? "このカテゴリの達成はまだありません。"
-                  : "誰かにミッションを渡すか、自分でチャレンジしてここを埋めよう。"}
+                {tags.length
+                  ? "このタグの投稿はまだありません。"
+                  : "やりたいことを登録して、達成したら投稿しよう。"}
               </Text>
             </View>
           )

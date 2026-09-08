@@ -22,7 +22,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "ホーム",
-          headerTitle: "みんなの達成",
+          headerTitle: "みんなの投稿",
           tabBarIcon: ({ color, size }) => <Ionicons name="flame" size={size} color={color} />,
         }}
       />
@@ -30,7 +30,7 @@ export default function TabLayout() {
         name="create"
         options={{
           title: "作成",
-          headerTitle: "ミッションを作る",
+          headerTitle: "やりたいことを登録する",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="add-circle" size={size} color={color} />
           ),

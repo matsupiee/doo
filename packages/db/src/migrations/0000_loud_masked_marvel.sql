@@ -101,14 +101,17 @@ CREATE TABLE `mission_completion` (
 CREATE INDEX `mission_completion_missionId_idx` ON `mission_completion` (`mission_id`);--> statement-breakpoint
 CREATE INDEX `mission_completion_completedAt_idx` ON `mission_completion` (`completed_at`);--> statement-breakpoint
 CREATE UNIQUE INDEX `mission_completion_postId_uidx` ON `mission_completion` (`post_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `mission_completion_id_missionId_uidx` ON `mission_completion` (`id`,`mission_id`);--> statement-breakpoint
 CREATE TABLE `mission_completion_participant` (
 	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
 	`completion_id` text NOT NULL,
+	`mission_id` text NOT NULL,
 	`user_id` text NOT NULL,
 	PRIMARY KEY(`completion_id`, `user_id`),
-	FOREIGN KEY (`completion_id`) REFERENCES `mission_completion`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+	FOREIGN KEY (`mission_id`) REFERENCES `mission`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`completion_id`,`mission_id`) REFERENCES `mission_completion`(`id`,`mission_id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`mission_id`,`user_id`) REFERENCES `mission_participant`(`mission_id`,`user_id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE INDEX `missionCompletionParticipant_userId_idx` ON `mission_completion_participant` (`user_id`);--> statement-breakpoint

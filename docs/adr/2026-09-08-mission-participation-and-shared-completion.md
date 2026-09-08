@@ -1,7 +1,7 @@
 # 「やりたいこと」に参加して、達成を共同で記録する
 
 - 日付: 2026-09-08
-- ステータス: 採用（スキーマのみ先行、API/UI は後続）
+- ステータス: 採用（通知を除いて API・UI とも実装済み）
 
 ## 背景
 
@@ -141,12 +141,14 @@ libsql は SQLite と違い `PRAGMA foreign_keys` が既定で ON であるこ�
 ## 影響
 
 - `assignment` / `relay` / `mission_category` テーブルは廃止。旧 ADR 3件は本 ADR で置き換える。
-- マイグレーションは未生成。`drizzle-kit generate` が「新テーブルは旧テーブルの
-  リネームか？」を対話で聞いてくるため、`docs/rules/database-pattern.md` の
-  「インタラクティブな質問がある場合はユーザーに確認を求める」に従い、生成は行っていない。
-  リネームではなく新規作成として答える必要がある。
+- マイグレーションは `drizzle-kit generate` で生成済み。複合 FK と `mission_id` の追加を
+  差分として当てると、drizzle が作る「テーブル作り直し + 旧テーブルからのコピー」で
+  まだ存在しない列を選ぶ SQL になり適用できなかったため、リリース前であることを踏まえて
+  `src/migrations` を作り直し、現在のスキーマ1本にまとめた。手書きはしていない。
 - `packages/api`（`mission` / `feed` / `user` ルーター）、`apps/native`、
-  `packages/db/src/seed` は旧モデル前提のままで型エラーになっている。後続で書き直す。
+  `packages/db/src/seed` を新しいモデルで書き直した。`assignment` / `relay` /
+  `mission_category` に依存していた画面（リレーのツリー、カテゴリのチップ）は削除した。
+- 通知は未実装。`notification` テーブルの追加は下記のとおり別 PR で行う。
 
 ## 積み残しの決定
 

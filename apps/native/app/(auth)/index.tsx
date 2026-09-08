@@ -13,7 +13,7 @@ export default function OnboardingScreen() {
       <View className="flex-1 justify-center gap-3">
         <Text className="text-5xl font-bold text-foreground">doo</Text>
         <Text className="text-lg text-muted">
-          ミッションを渡して、クリアして、次の誰かにつなげる。
+          やりたいことを登録して、達成したら投稿する。
         </Text>
       </View>
 

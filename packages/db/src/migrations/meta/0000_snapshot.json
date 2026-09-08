@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "50d70afa-0262-4fd4-946d-00171c315710",
+  "id": "85806139-a768-4007-bc38-2935ec882d52",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -685,6 +685,14 @@
             "post_id"
           ],
           "isUnique": true
+        },
+        "mission_completion_id_missionId_uidx": {
+          "name": "mission_completion_id_missionId_uidx",
+          "columns": [
+            "id",
+            "mission_id"
+          ],
+          "isUnique": true
         }
       },
       "foreignKeys": {
@@ -745,6 +753,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "mission_id": {
+          "name": "mission_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "user_id": {
           "name": "user_id",
           "type": "text",
@@ -763,12 +778,12 @@
         }
       },
       "foreignKeys": {
-        "mission_completion_participant_completion_id_mission_completion_id_fk": {
-          "name": "mission_completion_participant_completion_id_mission_completion_id_fk",
+        "mission_completion_participant_mission_id_mission_id_fk": {
+          "name": "mission_completion_participant_mission_id_mission_id_fk",
           "tableFrom": "mission_completion_participant",
-          "tableTo": "mission_completion",
+          "tableTo": "mission",
           "columnsFrom": [
-            "completion_id"
+            "mission_id"
           ],
           "columnsTo": [
             "id"
@@ -776,15 +791,32 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "mission_completion_participant_user_id_user_id_fk": {
-          "name": "mission_completion_participant_user_id_user_id_fk",
+        "mission_completion_participant_completion_fk": {
+          "name": "mission_completion_participant_completion_fk",
           "tableFrom": "mission_completion_participant",
-          "tableTo": "user",
+          "tableTo": "mission_completion",
           "columnsFrom": [
+            "completion_id",
+            "mission_id"
+          ],
+          "columnsTo": [
+            "id",
+            "mission_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "mission_completion_participant_participant_fk": {
+          "name": "mission_completion_participant_participant_fk",
+          "tableFrom": "mission_completion_participant",
+          "tableTo": "mission_participant",
+          "columnsFrom": [
+            "mission_id",
             "user_id"
           ],
           "columnsTo": [
-            "id"
+            "mission_id",
+            "user_id"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
