@@ -1,5 +1,6 @@
-import { Chip } from "heroui-native";
 import { View } from "react-native";
+
+import { Pill } from "@/components/ui/pill";
 
 /** やりたいことと投稿カードに出す、読むだけのタグ。 */
 export function TagChips({ tags }: { tags: string[] }) {
@@ -8,9 +9,7 @@ export function TagChips({ tags }: { tags: string[] }) {
   return (
     <View className="flex-row flex-wrap gap-1.5">
       {tags.map((tag) => (
-        <Chip key={tag} variant="secondary" size="sm">
-          <Chip.Label>{tag}</Chip.Label>
-        </Chip>
+        <Pill key={tag} label={tag} size="sm" />
       ))}
     </View>
   );

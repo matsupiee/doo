@@ -1,3 +1,82 @@
 @import "tailwindcss";
 @import "uniwind";
 @import "heroui-native/styles";
+
+/*
+ * doo のテーマ。heroui-native の変数を上書きして、
+ * ほぼ黒の背景にビビッドな面を置くネオブルータリズム寄りの見た目にする。
+ * ブランド色（violet / coral / yellow / cream）はライトでもダークでも同じ値を使う。
+ */
+@theme {
+  --color-brand-violet: #6c5ce7;
+  --color-brand-coral: #f2543d;
+  --color-brand-yellow: #f7d046;
+  --color-brand-cream: #f2eee3;
+  --color-brand-ink: #101010;
+}
+
+@layer theme {
+  :root {
+    @variant light {
+      --background: #efeae0;
+      --foreground: #14120f;
+
+      --surface: #fdfbf6;
+      --surface-secondary: #ffffff;
+      --surface-tertiary: #e6e0d4;
+
+      --overlay: #fdfbf6;
+      --muted: #6f6a60;
+
+      --default: #e3ddd1;
+      --default-foreground: #14120f;
+
+      --accent: #6c5ce7;
+      --accent-foreground: #ffffff;
+
+      --field-background: #ffffff;
+      --field-foreground: #14120f;
+
+      --success: #2fbf71;
+      --success-foreground: #ffffff;
+      --warning: #f7d046;
+      --warning-foreground: #14120f;
+      --danger: #f2543d;
+      --danger-foreground: #ffffff;
+
+      --border: #ded7c9;
+      --separator: #cfc7b6;
+    }
+
+    @variant dark {
+      --background: #0d0d0d;
+      --foreground: #f5f2ea;
+
+      --surface: #191919;
+      --surface-secondary: #1f1f1f;
+      --surface-tertiary: #2a2a2a;
+
+      --overlay: #191919;
+      --muted: #9a958a;
+
+      --default: #232323;
+      --default-foreground: #f5f2ea;
+
+      --accent: #6c5ce7;
+      --accent-foreground: #ffffff;
+
+      --field-background: #1f1f1f;
+      --field-foreground: #f5f2ea;
+
+      --success: #2fbf71;
+      --success-foreground: #ffffff;
+      --warning: #f7d046;
+      --warning-foreground: #14120f;
+      --danger: #f2543d;
+      --danger-foreground: #ffffff;
+
+      --border: #2a2a2a;
+      --separator: #333333;
+    }
+  }
+}

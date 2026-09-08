@@ -62,13 +62,13 @@ export function MediaUploadField({ kind, value, onChange }: Props) {
       {preview && kind === "photo" ? (
         <Image
           source={{ uri: preview }}
-          className="w-full h-56 rounded-lg"
+          className="w-full h-56 rounded-2xl"
           resizeMode="cover"
         />
       ) : null}
 
       {preview && kind === "video" ? (
-        <View className="h-24 items-center justify-center rounded-lg border border-border">
+        <View className="h-24 items-center justify-center rounded-2xl border border-border">
           <Ionicons name="videocam" size={28} color={mutedColor} />
           <Text className="text-muted text-xs mt-1">動画を選択しました</Text>
         </View>

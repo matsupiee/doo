@@ -1,22 +1,20 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import {
-  Button,
-  Card,
-  Chip,
-  Input,
-  Label,
-  Spinner,
-  TextField,
-  useToast,
-} from "heroui-native";
+import { Input, Label, Spinner, TextField, useToast } from "heroui-native";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Container } from "@/components/container";
 import { MediaUploadField } from "@/components/media-upload-field";
 import { formatWhen } from "@/components/post-card";
 import { TagChips } from "@/components/tag-chips";
+import { ActionButton } from "@/components/ui/action-button";
+import { Panel, PanelEyebrow, PanelMutedText, PanelText, PanelTitle } from "@/components/ui/panel";
+import { Pill } from "@/components/ui/pill";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { StatTile } from "@/components/ui/stat-tile";
+import { toneForKey } from "@/components/ui/theme";
+import { useAppTheme } from "@/contexts/app-theme-context";
 import { UserPicker } from "@/components/user-picker";
 import { queryClient, trpc } from "@/utils/trpc";
 
@@ -34,6 +32,8 @@ const MAX_COMPANIONS = 19;
 export default function MissionDetailScreen() {
   const { missionId } = useLocalSearchParams<{ missionId: string }>();
   const { toast } = useToast();
+  const insets = useSafeAreaInsets();
+  const { isDark } = useAppTheme();
 
   const [mediaType, setMediaType] = useState<MediaType>("text");
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
@@ -118,21 +118,20 @@ export default function MissionDetailScreen() {
 
   if (!mission) {
     return (
-      <Container className="px-4">
+      <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+        <ScreenHeader title="やりたいこと" onBack={() => router.back()} />
         <View className="flex-1 items-center justify-center gap-2">
           <Text className="text-foreground font-semibold">このやりたいことは見つかりません</Text>
           <Text className="text-muted text-sm">すでに削除された可能性があります。</Text>
         </View>
-      </Container>
+      </View>
     );
   }
 
   const needsMedia = mediaType !== "text";
   const isPosting = complete.isPending || postProgress.isPending;
   const canPost =
-    !isPosting &&
-    (!needsMedia || mediaUrl !== null) &&
-    (needsMedia || caption.trim().length > 0);
+    !isPosting && (!needsMedia || mediaUrl !== null) && (needsMedia || caption.trim().length > 0);
 
   const media = {
     mediaType,
@@ -141,96 +140,104 @@ export default function MissionDetailScreen() {
   };
 
   return (
-    <Container className="px-4" scrollViewProps={{ showsVerticalScrollIndicator: false }}>
-      <View className="gap-4 py-4">
-        <Card variant="secondary" className="p-4 gap-2">
-          <Text className="text-foreground text-lg font-semibold">🎯 {mission.title}</Text>
-          {mission.description ? (
-            <Text className="text-muted text-sm">{mission.description}</Text>
-          ) : null}
-          <TagChips tags={mission.tags} />
-          <Text className="text-muted text-xs">
-            登録: {mission.creatorName}・{formatWhen(mission.createdAt)}
-          </Text>
-        </Card>
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <ScreenHeader title="やりたいこと" eyebrow="MISSION" onBack={() => router.back()} />
 
-        <Card variant="secondary" className="p-4 gap-3">
-          <Card.Title>参加している人（{mission.participants.length}人）</Card.Title>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32, gap: 12 }}
+      >
+        <Panel tone={toneForKey(mission.missionId, isDark)} className="p-5 gap-3">
+          <View className="gap-1">
+            <PanelEyebrow>MISSION</PanelEyebrow>
+            <PanelTitle size={30}>{mission.title}</PanelTitle>
+          </View>
+          {mission.description ? <PanelText>{mission.description}</PanelText> : null}
+          <TagChips tags={mission.tags} />
+          <PanelMutedText>
+            登録: {mission.creatorName}・{formatWhen(mission.createdAt)}
+          </PanelMutedText>
+        </Panel>
+
+        <View className="flex-row gap-2">
+          <StatTile label="参加" value={mission.participants.length} tone={isDark ? "cream" : "ink"} />
+          <StatTile label="達成" value={mission.completions.length} tone={isDark ? "cream" : "ink"} />
+        </View>
+
+        <Panel className="p-4 gap-3">
+          <PanelTitle size={18}>
+            参加している人（{mission.participants.length}人）
+          </PanelTitle>
+
           <View className="flex-row flex-wrap gap-2">
             {mission.participants.map((participant) => (
-              <Chip key={participant.userId} variant="secondary" size="sm">
-                <Chip.Label>
-                  {participant.name}
-                  {participant.userId === mission.creatorId ? "（登録した人）" : ""}
-                </Chip.Label>
-              </Chip>
+              <Pill
+                key={participant.userId}
+                size="sm"
+                label={`${participant.name}${
+                  participant.userId === mission.creatorId ? "（登録した人）" : ""
+                }`}
+              />
             ))}
           </View>
 
           {mission.isParticipant ? (
-            <View className="flex-row gap-2">
+            <View className="flex-row">
               {mission.isCreator ? (
-                <Button
+                <ActionButton
+                  label="やりたいことを削除する"
                   size="sm"
-                  variant="secondary"
-                  isDisabled={remove.isPending}
+                  tone="coral"
+                  isPending={remove.isPending}
                   onPress={() => remove.mutate({ missionId })}
-                >
-                  <Button.Label>やりたいことを削除する</Button.Label>
-                </Button>
+                />
               ) : (
-                <Button
+                <ActionButton
+                  label="抜ける"
                   size="sm"
-                  variant="secondary"
-                  isDisabled={leave.isPending}
+                  variant="outline"
+                  isPending={leave.isPending}
                   onPress={() => leave.mutate({ missionId })}
-                >
-                  <Button.Label>抜ける</Button.Label>
-                </Button>
+                />
               )}
             </View>
           ) : (
-            <Button
-              size="sm"
-              isDisabled={join.isPending}
+            <ActionButton
+              label="参加する"
+              tone="violet"
+              hasArrow
+              isPending={join.isPending}
               onPress={() => join.mutate({ missionId })}
-            >
-              <Button.Label>参加する</Button.Label>
-            </Button>
+            />
           )}
 
           {mission.isCreator ? (
-            <Text className="text-muted text-xs">
+            <PanelMutedText>
               登録した人は抜けられません。やめるときはやりたいことごと削除します。
-            </Text>
+            </PanelMutedText>
           ) : null}
           {!mission.isCreator && mission.isParticipant && mission.myCompletionCount > 0 ? (
-            <Text className="text-muted text-xs">
-              自分の達成があるので抜けられません。
-            </Text>
+            <PanelMutedText>自分の達成があるので抜けられません。</PanelMutedText>
           ) : null}
-        </Card>
+        </Panel>
 
         {mission.isParticipant ? (
-          <Card variant="secondary" className="p-4 gap-3">
-            <Card.Title>達成・進捗を投稿する</Card.Title>
+          <Panel className="p-4 gap-3">
+            <PanelTitle size={18}>達成・進捗を投稿する</PanelTitle>
 
             <View className="flex-row gap-2">
               {mediaOptions.map((option) => (
-                // `onPress` goes on the Chip itself: it renders its own Pressable,
-                // so a wrapping Pressable never sees the touch.
-                <Chip
+                <Pill
                   key={option.value}
-                  variant={mediaType === option.value ? "primary" : "secondary"}
-                  color={mediaType === option.value ? "success" : "default"}
+                  label={option.label}
+                  isSelected={mediaType === option.value}
                   onPress={() => {
                     // The uploaded file belongs to the previous kind — drop it.
                     if (option.value !== mediaType) setMediaUrl(null);
                     setMediaType(option.value);
                   }}
-                >
-                  <Chip.Label>{option.label}</Chip.Label>
-                </Chip>
+                />
               ))}
             </View>
 
@@ -257,84 +264,73 @@ export default function MissionDetailScreen() {
             </TextField>
 
             <View className="gap-2">
-              <Text className="text-foreground text-sm">
+              <PanelText style={{ fontWeight: "700" }}>
                 一緒に達成した人（{companionIds.length}人）
-              </Text>
-              <Text className="text-muted text-xs">
+              </PanelText>
+              <PanelMutedText>
                 選ぶと共同達成になります。参加していない人を選ぶと、その場で参加者になります。
-              </Text>
+              </PanelMutedText>
 
               {isPickingCompanions ? (
-                <UserPicker
-                  selectedIds={companionIds}
-                  onChange={setCompanionIds}
-                  max={MAX_COMPANIONS}
-                />
+                <UserPicker selectedIds={companionIds} onChange={setCompanionIds} max={MAX_COMPANIONS} />
               ) : null}
 
-              <Button
-                size="sm"
-                variant="secondary"
-                onPress={() => setIsPickingCompanions((value) => !value)}
-              >
-                <Button.Label>
-                  {isPickingCompanions ? "選び終わった" : "一緒に達成した人を選ぶ"}
-                </Button.Label>
-              </Button>
+              <View className="flex-row">
+                <ActionButton
+                  label={isPickingCompanions ? "選び終わった" : "一緒に達成した人を選ぶ"}
+                  size="sm"
+                  variant="outline"
+                  onPress={() => setIsPickingCompanions((value) => !value)}
+                />
+              </View>
             </View>
 
-            <Button
+            <ActionButton
+              label="達成として投稿する"
+              tone="coral"
+              hasArrow
               isDisabled={!canPost}
-              onPress={() =>
-                complete.mutate({ missionId, participantIds: companionIds, ...media })
-              }
-            >
-              {complete.isPending ? (
-                <Spinner size="sm" color="default" />
-              ) : (
-                <Button.Label>達成として投稿する</Button.Label>
-              )}
-            </Button>
+              isPending={complete.isPending}
+              onPress={() => complete.mutate({ missionId, participantIds: companionIds, ...media })}
+            />
 
-            <Button
-              variant="secondary"
+            <ActionButton
+              label="進捗として投稿する"
+              tone="yellow"
               isDisabled={!canPost}
+              isPending={postProgress.isPending}
               onPress={() => postProgress.mutate({ missionId, ...media })}
-            >
-              {postProgress.isPending ? (
-                <Spinner size="sm" color="default" />
-              ) : (
-                <Button.Label>進捗として投稿する</Button.Label>
-              )}
-            </Button>
-          </Card>
+            />
+          </Panel>
         ) : null}
 
-        <View className="gap-3 pb-8">
-          <Text className="text-foreground text-lg font-semibold">
-            達成（{mission.completions.length}件）
-          </Text>
+        <Text
+          className="text-foreground"
+          style={{ fontSize: 20, fontWeight: "800", letterSpacing: -0.5 }}
+        >
+          達成（{mission.completions.length}件）
+        </Text>
 
-          {mission.completions.length === 0 ? (
-            <Card variant="secondary" className="p-4">
-              <Text className="text-muted text-sm">まだ達成はありません。</Text>
-            </Card>
-          ) : null}
+        {mission.completions.length === 0 ? (
+          <Panel className="p-4">
+            <PanelMutedText>まだ達成はありません。</PanelMutedText>
+          </Panel>
+        ) : null}
 
-          {mission.completions.map((completion) => (
-            <Card key={completion.completionId} variant="secondary" className="p-4 gap-1">
-              <Text className="text-foreground font-semibold">
-                {completion.participants.map((row) => row.name).join("・")}
-                {completion.participants.length > 1 ? " が共同で達成" : " が達成"}
-              </Text>
-              <Text className="text-muted text-xs">{formatWhen(completion.completedAt)}</Text>
-              {completion.caption ? (
-                <Text className="text-foreground text-sm mt-1">{completion.caption}</Text>
-              ) : null}
-            </Card>
-          ))}
-        </View>
-      </View>
-    </Container>
+        {mission.completions.map((completion) => (
+          <Panel key={completion.completionId} tone={isDark ? "cream" : "ink"} className="p-4 gap-1">
+            <PanelEyebrow>COMPLETED</PanelEyebrow>
+            <PanelTitle size={17}>
+              {completion.participants.map((row) => row.name).join("・")}
+              {completion.participants.length > 1 ? " が共同で達成" : " が達成"}
+            </PanelTitle>
+            <PanelMutedText>{formatWhen(completion.completedAt)}</PanelMutedText>
+            {completion.caption ? (
+              <PanelText style={{ marginTop: 4 }}>{completion.caption}</PanelText>
+            ) : null}
+          </Panel>
+        ))}
+      </ScrollView>
+    </View>
   );
 }

@@ -1,17 +1,21 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useMutation } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { Button, Card, Chip, Input, Label, Spinner, TextField, useToast } from "heroui-native";
+import { Input, Label, TextField, useToast } from "heroui-native";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Container } from "@/components/container";
+import { ActionButton } from "@/components/ui/action-button";
+import { Panel, PanelEyebrow, PanelMutedText, PanelTitle } from "@/components/ui/panel";
+import { Pill } from "@/components/ui/pill";
+import { ScreenHeader } from "@/components/ui/screen-header";
 import { queryClient, trpc } from "@/utils/trpc";
 
 const MAX_TAGS = 10;
 
 export default function CreateMissionScreen() {
   const { toast } = useToast();
+  const insets = useSafeAreaInsets();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -52,9 +56,27 @@ export default function CreateMissionScreen() {
   const canSubmit = title.trim().length > 0 && !createMission.isPending;
 
   return (
-    <Container className="px-4" scrollViewProps={{ showsVerticalScrollIndicator: false }}>
-      <View className="gap-4 py-4">
-        <Card variant="secondary" className="p-4 gap-3">
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <ScreenHeader title="やりたいこと" eyebrow="NEW MISSION" />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingBottom: insets.bottom + 110,
+          gap: 12,
+        }}
+      >
+        <Panel tone="violet" className="p-5 gap-1">
+          <PanelEyebrow>STEP 1</PanelEyebrow>
+          <PanelTitle size={26}>なにをやりたい？</PanelTitle>
+          <PanelMutedText style={{ fontSize: 13, marginTop: 4 }}>
+            登録すると自分が参加者になります。ほかのユーザーからも見えて、あとから参加してもらえます。
+          </PanelMutedText>
+        </Panel>
+
+        <Panel className="p-4 gap-3">
           <TextField>
             <Label>やりたいこと</Label>
             <Input
@@ -77,13 +99,15 @@ export default function CreateMissionScreen() {
               style={{ minHeight: 88, textAlignVertical: "top" }}
             />
           </TextField>
-        </Card>
+        </Panel>
 
-        <Card variant="secondary" className="p-4 gap-3">
-          <Card.Title>タグ（任意・複数可）</Card.Title>
-          <Text className="text-muted text-xs">
-            自由に書けます。フィードの絞り込みに使われます。
-          </Text>
+        <Panel className="p-4 gap-3">
+          <View className="gap-1">
+            <PanelTitle size={18}>タグ</PanelTitle>
+            <PanelMutedText>
+              任意・複数可。自由に書けます。フィードの絞り込みに使われます。
+            </PanelMutedText>
+          </View>
 
           <View className="flex-row items-center gap-2">
             <View className="flex-1">
@@ -98,38 +122,43 @@ export default function CreateMissionScreen() {
                 />
               </TextField>
             </View>
-            <Button size="sm" variant="secondary" isDisabled={!tagDraft.trim()} onPress={addTag}>
-              <Button.Label>追加</Button.Label>
-            </Button>
+            <ActionButton
+              label="追加"
+              size="sm"
+              variant="outline"
+              isDisabled={!tagDraft.trim()}
+              onPress={addTag}
+            />
           </View>
 
           {tags.length ? (
             <View className="flex-row flex-wrap gap-2">
               {tags.map((tag) => (
-                <Pressable
+                <Pill
                   key={tag}
+                  label={`${tag} ✕`}
+                  isSelected
+                  size="sm"
                   onPress={() => setTags((current) => current.filter((value) => value !== tag))}
-                  className="active:opacity-70"
-                >
-                  <Chip variant="primary" color="success" size="sm">
-                    <Chip.Label>{tag} ✕</Chip.Label>
-                  </Chip>
-                </Pressable>
+                />
               ))}
             </View>
           ) : null}
-        </Card>
+        </Panel>
 
-        <Card variant="secondary" className="p-4 flex-row gap-3">
-          <Ionicons name="information-circle-outline" size={20} color="#888" />
-          <Text className="text-muted text-xs flex-1">
-            登録すると自分が参加者になります。ほかのユーザーからも見えて、あとから参加してもらえます。
-          </Text>
-        </Card>
+        <Panel tone="yellow" className="p-4">
+          <PanelMutedText style={{ fontSize: 13 }}>
+            達成は誰か1人のものではなく、参加者みんなにぶら下がります。
+            同じやりたいことは、何度でも達成として記録できます。
+          </PanelMutedText>
+        </Panel>
 
-        <Button
+        <ActionButton
+          label="やりたいことを登録する"
+          tone="coral"
+          hasArrow
           isDisabled={!canSubmit}
-          className="mb-8"
+          isPending={createMission.isPending}
           onPress={() =>
             createMission.mutate({
               title: title.trim(),
@@ -137,14 +166,8 @@ export default function CreateMissionScreen() {
               tags,
             })
           }
-        >
-          {createMission.isPending ? (
-            <Spinner size="sm" color="default" />
-          ) : (
-            <Button.Label>やりたいことを登録する</Button.Label>
-          )}
-        </Button>
-      </View>
-    </Container>
+        />
+      </ScrollView>
+    </View>
   );
 }

@@ -1,15 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { Platform, Pressable } from "react-native";
+import { useThemeColor } from "heroui-native";
+import { Platform, Pressable, View } from "react-native";
 import Animated, { FadeOut, ZoomIn } from "react-native-reanimated";
-import { withUniwind } from "uniwind";
 
 import { useAppTheme } from "@/contexts/app-theme-context";
 
-const StyledIonicons = withUniwind(Ionicons);
-
+/** 画面右上の丸ボタン。ライトとダークを切り替える。 */
 export function ThemeToggle() {
   const { toggleTheme, isLight } = useAppTheme();
+  const foreground = useThemeColor("foreground");
 
   return (
     <Pressable
@@ -19,17 +19,30 @@ export function ThemeToggle() {
         }
         toggleTheme();
       }}
-      className="px-2.5"
+      hitSlop={8}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
     >
-      {isLight ? (
-        <Animated.View key="moon" entering={ZoomIn} exiting={FadeOut}>
-          <StyledIonicons name="moon" size={20} className="text-foreground" />
-        </Animated.View>
-      ) : (
-        <Animated.View key="sun" entering={ZoomIn} exiting={FadeOut}>
-          <StyledIonicons name="sunny" size={20} className="text-foreground" />
-        </Animated.View>
-      )}
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          alignItems: "center",
+          justifyContent: "center",
+          borderWidth: 1.5,
+          borderColor: foreground,
+        }}
+      >
+        {isLight ? (
+          <Animated.View key="moon" entering={ZoomIn} exiting={FadeOut}>
+            <Ionicons name="moon" size={18} color={foreground} />
+          </Animated.View>
+        ) : (
+          <Animated.View key="sun" entering={ZoomIn} exiting={FadeOut}>
+            <Ionicons name="sunny" size={18} color={foreground} />
+          </Animated.View>
+        )}
+      </View>
     </Pressable>
   );
 }

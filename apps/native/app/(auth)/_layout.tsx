@@ -16,8 +16,8 @@ export default function AuthLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="sign-up" options={{ title: "新規登録" }} />
-      <Stack.Screen name="sign-in" options={{ title: "ログイン" }} />
+      <Stack.Screen name="sign-up" options={{ headerShown: false }} />
+      <Stack.Screen name="sign-in" options={{ headerShown: false }} />
     </Stack>
   );
 }

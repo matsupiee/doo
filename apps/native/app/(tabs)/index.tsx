@@ -1,10 +1,13 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { Chip, Spinner } from "heroui-native";
+import { Spinner } from "heroui-native";
 import { useCallback, useState } from "react";
 import { FlatList, RefreshControl, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PostCard, type FeedPost } from "@/components/post-card";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Pill } from "@/components/ui/pill";
+import { ScreenHeader } from "@/components/ui/screen-header";
 import { trpc } from "@/utils/trpc";
 
 export default function FeedScreen() {
@@ -31,35 +34,30 @@ export default function FeedScreen() {
   }, [feed, tagOptions]);
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <ScreenHeader title="みんなの投稿" eyebrow="DOO FEED" right={<ThemeToggle />} />
+
       {tagOptions.data?.length ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}
           className="grow-0"
         >
-          {tagOptions.data.map((option) => {
-            const isSelected = tags.includes(option.title);
-            return (
-              // `Chip` is itself a Pressable, so it takes `onPress` directly.
-              <Chip
-                key={option.title}
-                variant={isSelected ? "primary" : "secondary"}
-                color={isSelected ? "success" : "default"}
-                size="sm"
-                onPress={() =>
-                  setTags((current) =>
-                    current.includes(option.title)
-                      ? current.filter((value) => value !== option.title)
-                      : [...current, option.title],
-                  )
-                }
-              >
-                <Chip.Label>{option.title}</Chip.Label>
-              </Chip>
-            );
-          })}
+          {tagOptions.data.map((option) => (
+            <Pill
+              key={option.title}
+              label={option.title}
+              isSelected={tags.includes(option.title)}
+              onPress={() =>
+                setTags((current) =>
+                  current.includes(option.title)
+                    ? current.filter((value) => value !== option.title)
+                    : [...current, option.title],
+                )
+              }
+            />
+          ))}
         </ScrollView>
       ) : null}
 
@@ -68,8 +66,9 @@ export default function FeedScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <PostCard post={item} />}
         contentContainerStyle={{
-          padding: 16,
-          paddingBottom: insets.bottom + 24,
+          paddingHorizontal: 16,
+          paddingTop: 4,
+          paddingBottom: insets.bottom + 96,
           flexGrow: 1,
         }}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
