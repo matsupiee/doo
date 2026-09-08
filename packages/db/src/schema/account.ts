@@ -11,6 +11,9 @@ import { createdAt, updatedAt } from "./_shared";
 import { user } from "./user";
 import { relations } from "drizzle-orm";
 
+/**
+ * @note better-auth で指定された構造にする必要がある
+ */
 export const account = sqliteTable(
   "account",
   {

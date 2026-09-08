@@ -3,6 +3,9 @@ import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 import { createdAt, updatedAt } from "./_shared";
 
+/**
+ * @note better-auth で指定された構造にする必要がある
+ */
 export const verification = sqliteTable(
   "verification",
   {
