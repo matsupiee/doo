@@ -11,6 +11,9 @@ import { post } from "./post";
  * 達成したこと自体を別テーブルにすることで、共同達成を表現できるようにする
  * 誰が達成したかは mission_completion_participant が持つ。
  * 1人だけなら個人達成、複数人なら共同達成。
+ *
+ * 1つのミッションに対して何度でも作れるイベントとして扱う
+ * （「毎朝走る」のような繰り返しのやりたいことを許すため）。
  */
 export const missionCompletion = sqliteTable(
   "mission_completion",
@@ -41,6 +44,11 @@ export const missionCompletion = sqliteTable(
     index("mission_completion_completedAt_idx").on(table.completedAt),
     /** 1つの投稿が2つの達成を表すことはない。 */
     uniqueIndex("mission_completion_postId_uidx").on(table.postId),
+    /**
+     * mission_completion_participant が (completion_id, mission_id) の複合 FK で
+     * この表を参照するために必要。SQLite は FK の参照先に unique 制約を要求する。
+     */
+    uniqueIndex("mission_completion_id_missionId_uidx").on(table.id, table.missionId),
   ],
 );
 

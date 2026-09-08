@@ -3,6 +3,7 @@ import { createdAt, updatedAt } from "./_shared";
 import { mission } from "./mission";
 import { user } from "./user";
 import { relations } from "drizzle-orm";
+import { missionCompletionParticipant } from "./mission-completion-participant";
 
 export const missionParticipant = sqliteTable(
   "mission_participant",
@@ -24,7 +25,7 @@ export const missionParticipant = sqliteTable(
 
 export const missionParticipantRelations = relations(
   missionParticipant,
-  ({ one }) => ({
+  ({ one, many }) => ({
     mission: one(mission, {
       fields: [missionParticipant.missionId],
       references: [mission.id],
@@ -33,5 +34,7 @@ export const missionParticipantRelations = relations(
       fields: [missionParticipant.userId],
       references: [user.id],
     }),
+    /** この参加者としての達成。参加をやめると達成の記録も消える点に注意。 */
+    completionParticipations: many(missionCompletionParticipant),
   }),
 );
