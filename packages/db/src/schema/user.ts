@@ -6,6 +6,10 @@ import { relations } from "drizzle-orm";
 import { session } from "./session";
 import { account } from "./account";
 import { missionParticipant } from "./mission-participant";
+import { mission } from "./mission";
+import { missionCompletionParticipant } from "./mission-completion-participant";
+import { post } from "./post";
+import { postReaction } from "./post-reaction";
 
 /**
  * @note better-auth で指定された構造にする必要がある
@@ -28,4 +32,9 @@ export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
   missionParticipants: many(missionParticipant),
+  /** 自分が作ったミッション。参加しているミッションは missionParticipants の方。 */
+  createdMissions: many(mission),
+  posts: many(post),
+  postReactions: many(postReaction),
+  completionParticipations: many(missionCompletionParticipant),
 }));

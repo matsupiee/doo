@@ -4,5 +4,8 @@ export * from "./account";
 export * from "./verification";
 export * from "./mission";
 export * from "./mission-tag";
+export * from "./mission-participant";
+export * from "./mission-completion";
+export * from "./mission-completion-participant";
 export * from "./post";
 export * from "./post-reaction";

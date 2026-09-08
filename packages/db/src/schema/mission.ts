@@ -7,6 +7,7 @@ import { relations } from "drizzle-orm";
 import { post } from "./post";
 import { missionTag } from "./mission-tag";
 import { missionParticipant } from "./mission-participant";
+import { missionCompletion } from "./mission-completion";
 
 export const mission = sqliteTable(
   "mission",
@@ -30,4 +31,5 @@ export const missionRelations = relations(mission, ({ one, many }) => ({
   posts: many(post),
   tags: many(missionTag),
   participants: many(missionParticipant),
+  completions: many(missionCompletion),
 }));

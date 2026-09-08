@@ -6,6 +6,7 @@ import { mission } from "./mission";
 import { user } from "./user";
 import { relations } from "drizzle-orm";
 import { postReaction } from "./post-reaction";
+import { missionCompletion } from "./mission-completion";
 
 export const postMediaType = ["photo", "video", "text"] as const;
 
@@ -45,4 +46,9 @@ export const postRelations = relations(post, ({ one, many }) => ({
   mission: one(mission, { fields: [post.missionId], references: [mission.id] }),
   author: one(user, { fields: [post.authorId], references: [user.id] }),
   reactions: many(postReaction),
+  /** 達成報告の投稿なら1件、進捗報告の投稿なら無し。 */
+  completion: one(missionCompletion, {
+    fields: [post.id],
+    references: [missionCompletion.postId],
+  }),
 }));
