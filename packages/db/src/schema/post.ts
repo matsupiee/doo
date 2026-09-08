@@ -1,38 +1,54 @@
 import { createId } from "@paralleldrive/cuid2";
 import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-import { createdAt } from "./_shared";
-import { assignment } from "./assignment";
+import { createdAt, updatedAt } from "./_shared";
 import { mission } from "./mission";
 import { user } from "./user";
+import { relations } from "drizzle-orm";
+import { postReaction } from "./post-reaction";
+import { missionCompletion } from "./mission-completion";
 
 export const postMediaType = ["photo", "video", "text"] as const;
 
-/** The proof of a cleared mission — this is what the home feed is made of. */
+/**
+ * feed投稿を行うための機能
+ * ミッション達成時は必ず投稿される
+ * ミッション達成してない場合の進捗報告投稿などもできる
+ */
 export const post = sqliteTable(
   "post",
   {
     id: text("id")
       .$defaultFn(() => createId())
       .primaryKey(),
-    assignmentId: text("assignment_id")
-      .notNull()
-      .references(() => assignment.id, { onDelete: "cascade" })
-      .unique(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
     missionId: text("mission_id")
       .notNull()
       .references(() => mission.id, { onDelete: "cascade" }),
     authorId: text("author_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    mediaType: text("media_type", { enum: postMediaType }).default("text").notNull(),
+    mediaType: text("media_type", { enum: postMediaType })
+      .default("text")
+      .notNull(),
     /** Null for text-only proof. */
     mediaUrl: text("media_url"),
     caption: text("caption"),
-    createdAt: createdAt(),
   },
   (table) => [
     index("post_authorId_idx").on(table.authorId),
     index("post_createdAt_idx").on(table.createdAt),
   ],
 );
+
+export const postRelations = relations(post, ({ one, many }) => ({
+  mission: one(mission, { fields: [post.missionId], references: [mission.id] }),
+  author: one(user, { fields: [post.authorId], references: [user.id] }),
+  reactions: many(postReaction),
+  /** 達成報告の投稿なら1件、進捗報告の投稿なら無し。 */
+  completion: one(missionCompletion, {
+    fields: [post.id],
+    references: [missionCompletion.postId],
+  }),
+}));

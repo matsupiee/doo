@@ -1,7 +1,12 @@
 import { sql } from "drizzle-orm";
 import { integer } from "drizzle-orm/sqlite-core";
 
-/** Every table stamps `created_at` / `updated_at` in the DB, never from the app. */
+/**
+ * @see https://orm.drizzle.team/docs/sqlite/guides/timestamp-default-value#sqlite
+ *
+ * エポックミリ秒の整数を記録する
+ * SQLiteには日付型は存在しない
+ */
 const now = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
 
 export const createdAt = () =>

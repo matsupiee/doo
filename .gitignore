@@ -56,3 +56,6 @@ coverage
 .cache
 tmp
 temp
+
+# test artifacts
+packages/api/test.db
