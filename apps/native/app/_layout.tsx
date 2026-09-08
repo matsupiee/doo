@@ -35,7 +35,11 @@ function StackLayout() {
       screenOptions={{
         headerTintColor: foreground,
         headerStyle: { backgroundColor: background },
-        headerTitleStyle: { color: foreground, fontWeight: "600" },
+        // Instagram のヘッダーは影を落とさず、細い線だけで本文と分ける
+        headerShadowVisible: true,
+        headerTitleStyle: { color: foreground, fontWeight: "600", fontSize: 16 },
+        headerTitleAlign: "center",
+        headerBackButtonDisplayMode: "minimal",
         contentStyle: { backgroundColor: background },
       }}
     >

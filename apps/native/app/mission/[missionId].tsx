@@ -1,19 +1,15 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import {
-  Button,
-  Card,
-  Chip,
-  Input,
-  Label,
-  Spinner,
-  TextField,
-  useToast,
-} from "heroui-native";
+import { Spinner, useThemeColor, useToast } from "heroui-native";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Container } from "@/components/container";
+import { Avatar } from "@/components/ig/avatar";
+import { EmptyState } from "@/components/ig/empty-state";
+import { PostGrid } from "@/components/ig/post-grid";
+import { ProfileStats } from "@/components/ig/profile-stats";
 import { MediaUploadField } from "@/components/media-upload-field";
 import { formatWhen } from "@/components/post-card";
 import { TagChips } from "@/components/tag-chips";
@@ -22,18 +18,21 @@ import { queryClient, trpc } from "@/utils/trpc";
 
 type MediaType = "photo" | "video" | "text";
 
-const mediaOptions: { value: MediaType; label: string }[] = [
-  { value: "photo", label: "写真" },
-  { value: "video", label: "動画" },
-  { value: "text", label: "テキスト" },
+const mediaOptions: { value: MediaType; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { value: "text", label: "テキスト", icon: "text" },
+  { value: "photo", label: "写真", icon: "image-outline" },
+  { value: "video", label: "動画", icon: "videocam-outline" },
 ];
 
 /** 一緒に達成した人として選べる人数。自分は含めない。 */
 const MAX_COMPANIONS = 19;
 
 export default function MissionDetailScreen() {
+  const insets = useSafeAreaInsets();
   const { missionId } = useLocalSearchParams<{ missionId: string }>();
   const { toast } = useToast();
+  const foreground = useThemeColor("foreground");
+  const placeholder = useThemeColor("muted");
 
   const [mediaType, setMediaType] = useState<MediaType>("text");
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
@@ -118,21 +117,20 @@ export default function MissionDetailScreen() {
 
   if (!mission) {
     return (
-      <Container className="px-4">
-        <View className="flex-1 items-center justify-center gap-2">
-          <Text className="text-foreground font-semibold">このやりたいことは見つかりません</Text>
-          <Text className="text-muted text-sm">すでに削除された可能性があります。</Text>
-        </View>
-      </Container>
+      <View className="flex-1 items-center justify-center bg-background">
+        <EmptyState
+          icon="alert-circle-outline"
+          title="このやりたいことは見つかりません"
+          body="すでに削除された可能性があります。"
+        />
+      </View>
     );
   }
 
   const needsMedia = mediaType !== "text";
   const isPosting = complete.isPending || postProgress.isPending;
   const canPost =
-    !isPosting &&
-    (!needsMedia || mediaUrl !== null) &&
-    (needsMedia || caption.trim().length > 0);
+    !isPosting && (!needsMedia || mediaUrl !== null) && (needsMedia || caption.trim().length > 0);
 
   const media = {
     mediaType,
@@ -140,201 +138,290 @@ export default function MissionDetailScreen() {
     caption: caption.trim() || undefined,
   };
 
+  function confirmRemove() {
+    Alert.alert("やりたいことを削除しますか？", "達成の記録も一緒に消えます。", [
+      { text: "キャンセル", style: "cancel" },
+      {
+        text: "削除",
+        style: "destructive",
+        onPress: () => remove.mutate({ missionId }),
+      },
+    ]);
+  }
+
   return (
-    <Container className="px-4" scrollViewProps={{ showsVerticalScrollIndicator: false }}>
-      <View className="gap-4 py-4">
-        <Card variant="secondary" className="p-4 gap-2">
-          <Text className="text-foreground text-lg font-semibold">🎯 {mission.title}</Text>
-          {mission.description ? (
-            <Text className="text-muted text-sm">{mission.description}</Text>
-          ) : null}
-          <TagChips tags={mission.tags} />
-          <Text className="text-muted text-xs">
-            登録: {mission.creatorName}・{formatWhen(mission.createdAt)}
+    <ScrollView
+      className="flex-1 bg-background"
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+    >
+      {/* プロフィールと同じ形のヘッダー。アイコン・数字・説明・ハッシュタグ */}
+      <View className="flex-row items-center px-4 pt-4 pb-3 gap-6">
+        <View className="w-[88px] h-[88px] rounded-full bg-surface-tertiary items-center justify-center">
+          <Ionicons name="flag" size={38} color="#8e8e8e" />
+        </View>
+        <ProfileStats
+          stats={[
+            { label: "達成", value: mission.completions.length },
+            { label: "参加", value: mission.participants.length },
+          ]}
+        />
+      </View>
+
+      <View className="px-4 pb-3 gap-0.5">
+        <Text className="text-foreground text-[15px] font-semibold">{mission.title}</Text>
+        {mission.description ? (
+          <Text className="text-foreground text-[13px]" style={{ lineHeight: 18 }}>
+            {mission.description}
           </Text>
-        </Card>
+        ) : null}
+        <TagChips tags={mission.tags} />
+        <Text className="text-muted text-[12px] mt-0.5">
+          {mission.creatorName} が登録・{formatWhen(mission.createdAt)}
+        </Text>
+      </View>
 
-        <Card variant="secondary" className="p-4 gap-3">
-          <Card.Title>参加している人（{mission.participants.length}人）</Card.Title>
-          <View className="flex-row flex-wrap gap-2">
-            {mission.participants.map((participant) => (
-              <Chip key={participant.userId} variant="secondary" size="sm">
-                <Chip.Label>
-                  {participant.name}
-                  {participant.userId === mission.creatorId ? "（登録した人）" : ""}
-                </Chip.Label>
-              </Chip>
-            ))}
-          </View>
-
-          {mission.isParticipant ? (
-            <View className="flex-row gap-2">
-              {mission.isCreator ? (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  isDisabled={remove.isPending}
-                  onPress={() => remove.mutate({ missionId })}
-                >
-                  <Button.Label>やりたいことを削除する</Button.Label>
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  isDisabled={leave.isPending}
-                  onPress={() => leave.mutate({ missionId })}
-                >
-                  <Button.Label>抜ける</Button.Label>
-                </Button>
-              )}
-            </View>
-          ) : (
-            <Button
-              size="sm"
-              isDisabled={join.isPending}
-              onPress={() => join.mutate({ missionId })}
-            >
-              <Button.Label>参加する</Button.Label>
-            </Button>
-          )}
-
-          {mission.isCreator ? (
-            <Text className="text-muted text-xs">
-              登録した人は抜けられません。やめるときはやりたいことごと削除します。
-            </Text>
-          ) : null}
-          {!mission.isCreator && mission.isParticipant && mission.myCompletionCount > 0 ? (
-            <Text className="text-muted text-xs">
-              自分の達成があるので抜けられません。
-            </Text>
-          ) : null}
-        </Card>
-
+      {/* 参加ボタン。Instagram のフォローボタンと同じ位置と形 */}
+      <View className="flex-row px-4 pb-4 gap-1.5">
         {mission.isParticipant ? (
-          <Card variant="secondary" className="p-4 gap-3">
-            <Card.Title>達成・進捗を投稿する</Card.Title>
+          mission.isCreator ? (
+            <ActionButton label="削除する" onPress={confirmRemove} tone="danger" />
+          ) : (
+            <ActionButton
+              label="抜ける"
+              onPress={() => leave.mutate({ missionId })}
+              isDisabled={leave.isPending}
+            />
+          )
+        ) : (
+          <ActionButton
+            label="参加する"
+            tone="accent"
+            onPress={() => join.mutate({ missionId })}
+            isDisabled={join.isPending}
+          />
+        )}
+        <ActionButton
+          label="参加者を見る"
+          onPress={() =>
+            Alert.alert(
+              `参加している人（${mission.participants.length}人）`,
+              mission.participants
+                .map(
+                  (participant) =>
+                    `${participant.name}${
+                      participant.userId === mission.creatorId ? "（登録した人）" : ""
+                    }`,
+                )
+                .join("\n"),
+            )
+          }
+        />
+      </View>
 
-            <View className="flex-row gap-2">
-              {mediaOptions.map((option) => (
-                // `onPress` goes on the Chip itself: it renders its own Pressable,
-                // so a wrapping Pressable never sees the touch.
-                <Chip
+      {mission.isCreator ? (
+        <Text className="text-muted text-[12px] px-4 pb-3">
+          登録した人は抜けられません。やめるときはやりたいことごと削除します。
+        </Text>
+      ) : null}
+      {!mission.isCreator && mission.isParticipant && mission.myCompletionCount > 0 ? (
+        <Text className="text-muted text-[12px] px-4 pb-3">
+          自分の達成があるので抜けられません。
+        </Text>
+      ) : null}
+
+      {/* 参加している人のアバターを、ストーリーのように横に並べる */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 14, gap: 14 }}
+      >
+        {mission.participants.map((participant) => (
+          <Pressable
+            key={participant.userId}
+            className="items-center gap-1.5 active:opacity-60"
+            onPress={() =>
+              router.push({
+                pathname: "/user/[userId]",
+                params: { userId: participant.userId },
+              })
+            }
+          >
+            <Avatar
+              name={participant.name}
+              size={60}
+              hasRing={participant.userId === mission.creatorId}
+            />
+            <Text
+              className="text-foreground text-[11px]"
+              numberOfLines={1}
+              style={{ maxWidth: 60 }}
+            >
+              {participant.name}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {mission.isParticipant ? (
+        <View className="border-t border-border">
+          <View className="px-4 py-3 flex-row items-center gap-2">
+            <Text className="text-foreground text-[14px] font-semibold flex-1">投稿する</Text>
+            {mediaOptions.map((option) => {
+              const isActive = mediaType === option.value;
+              return (
+                <Pressable
                   key={option.value}
-                  variant={mediaType === option.value ? "primary" : "secondary"}
-                  color={mediaType === option.value ? "success" : "default"}
+                  className="px-2 py-1 active:opacity-60"
                   onPress={() => {
-                    // The uploaded file belongs to the previous kind — drop it.
+                    // 選び直したら、前の種類でアップロードしたファイルは捨てる。
                     if (option.value !== mediaType) setMediaUrl(null);
                     setMediaType(option.value);
                   }}
                 >
-                  <Chip.Label>{option.label}</Chip.Label>
-                </Chip>
-              ))}
-            </View>
+                  <Ionicons
+                    name={option.icon}
+                    size={22}
+                    color={isActive ? "#0095f6" : "#8e8e8e"}
+                  />
+                </Pressable>
+              );
+            })}
+          </View>
 
-            {needsMedia ? (
+          {needsMedia ? (
+            <View className="px-4 pb-3">
               <MediaUploadField
                 key={mediaType}
                 kind={mediaType === "photo" ? "photo" : "video"}
                 value={mediaUrl}
                 onChange={setMediaUrl}
               />
-            ) : null}
-
-            <TextField>
-              <Label>ひとこと{needsMedia ? "（任意）" : ""}</Label>
-              <Input
-                value={caption}
-                onChangeText={setCaption}
-                placeholder="どうやって達成した？"
-                multiline
-                numberOfLines={3}
-                maxLength={500}
-                style={{ minHeight: 72, textAlignVertical: "top" }}
-              />
-            </TextField>
-
-            <View className="gap-2">
-              <Text className="text-foreground text-sm">
-                一緒に達成した人（{companionIds.length}人）
-              </Text>
-              <Text className="text-muted text-xs">
-                選ぶと共同達成になります。参加していない人を選ぶと、その場で参加者になります。
-              </Text>
-
-              {isPickingCompanions ? (
-                <UserPicker
-                  selectedIds={companionIds}
-                  onChange={setCompanionIds}
-                  max={MAX_COMPANIONS}
-                />
-              ) : null}
-
-              <Button
-                size="sm"
-                variant="secondary"
-                onPress={() => setIsPickingCompanions((value) => !value)}
-              >
-                <Button.Label>
-                  {isPickingCompanions ? "選び終わった" : "一緒に達成した人を選ぶ"}
-                </Button.Label>
-              </Button>
             </View>
+          ) : null}
 
-            <Button
+          <View className="px-4 pb-3">
+            <TextInput
+              value={caption}
+              onChangeText={setCaption}
+              placeholder="どうやって達成した？"
+              placeholderTextColor={placeholder}
+              multiline
+              maxLength={500}
+              className="text-foreground text-[15px]"
+              style={{ color: foreground, minHeight: 64, textAlignVertical: "top" }}
+            />
+          </View>
+
+          <View className="h-[0.5px] bg-border mx-4" />
+
+          <Pressable
+            className="flex-row items-center gap-3 px-4 py-3.5 active:opacity-60"
+            onPress={() => setIsPickingCompanions((value) => !value)}
+          >
+            <Ionicons name="person-add-outline" size={20} color={foreground} />
+            <Text className="text-foreground text-[15px] flex-1">一緒に達成した人</Text>
+            <Text className="text-muted text-[14px]">
+              {companionIds.length ? `${companionIds.length}人` : ""}
+            </Text>
+            <Ionicons
+              name={isPickingCompanions ? "chevron-up" : "chevron-forward"}
+              size={16}
+              color="#8e8e8e"
+            />
+          </Pressable>
+
+          {isPickingCompanions ? (
+            <View className="px-4 pb-3">
+              <UserPicker
+                selectedIds={companionIds}
+                onChange={setCompanionIds}
+                max={MAX_COMPANIONS}
+              />
+            </View>
+          ) : null}
+
+          <View className="h-[0.5px] bg-border mx-4" />
+
+          <View className="px-4 pt-4 gap-2">
+            <ActionButton
+              label="達成として投稿する"
+              tone="accent"
               isDisabled={!canPost}
+              isPending={complete.isPending}
               onPress={() =>
                 complete.mutate({ missionId, participantIds: companionIds, ...media })
               }
-            >
-              {complete.isPending ? (
-                <Spinner size="sm" color="default" />
-              ) : (
-                <Button.Label>達成として投稿する</Button.Label>
-              )}
-            </Button>
-
-            <Button
-              variant="secondary"
+            />
+            <ActionButton
+              label="進捗として投稿する"
               isDisabled={!canPost}
+              isPending={postProgress.isPending}
               onPress={() => postProgress.mutate({ missionId, ...media })}
-            >
-              {postProgress.isPending ? (
-                <Spinner size="sm" color="default" />
-              ) : (
-                <Button.Label>進捗として投稿する</Button.Label>
-              )}
-            </Button>
-          </Card>
-        ) : null}
-
-        <View className="gap-3 pb-8">
-          <Text className="text-foreground text-lg font-semibold">
-            達成（{mission.completions.length}件）
-          </Text>
-
-          {mission.completions.length === 0 ? (
-            <Card variant="secondary" className="p-4">
-              <Text className="text-muted text-sm">まだ達成はありません。</Text>
-            </Card>
-          ) : null}
-
-          {mission.completions.map((completion) => (
-            <Card key={completion.completionId} variant="secondary" className="p-4 gap-1">
-              <Text className="text-foreground font-semibold">
-                {completion.participants.map((row) => row.name).join("・")}
-                {completion.participants.length > 1 ? " が共同で達成" : " が達成"}
-              </Text>
-              <Text className="text-muted text-xs">{formatWhen(completion.completedAt)}</Text>
-              {completion.caption ? (
-                <Text className="text-foreground text-sm mt-1">{completion.caption}</Text>
-              ) : null}
-            </Card>
-          ))}
+            />
+          </View>
         </View>
+      ) : null}
+
+      <View className="mt-5 border-t border-border">
+        {mission.completions.length ? (
+          <PostGrid
+            items={mission.completions.map((completion) => ({
+              ...completion,
+              missionId,
+              missionTitle: mission.title,
+            }))}
+          />
+        ) : (
+          <EmptyState
+            icon="trophy-outline"
+            title="まだ達成はありません"
+            body="最初の一件を投稿してみよう。"
+          />
+        )}
       </View>
-    </Container>
+    </ScrollView>
+  );
+}
+
+/** Instagram のフォロー・フォロー中ボタンと同じ形のボタン。 */
+function ActionButton({
+  label,
+  onPress,
+  tone = "default",
+  isDisabled,
+  isPending,
+}: {
+  label: string;
+  onPress: () => void;
+  tone?: "default" | "accent" | "danger";
+  isDisabled?: boolean;
+  isPending?: boolean;
+}) {
+  const background =
+    tone === "accent" ? "#0095f6" : tone === "danger" ? "#ed4956" : undefined;
+
+  return (
+    <Pressable
+      onPress={isDisabled || isPending ? undefined : onPress}
+      className={`flex-1 items-center justify-center rounded-lg py-2.5 active:opacity-80 ${
+        background ? "" : "bg-surface-tertiary"
+      }`}
+      style={[
+        background ? { backgroundColor: background } : undefined,
+        isDisabled ? { opacity: 0.4 } : undefined,
+      ]}
+    >
+      {isPending ? (
+        <Spinner size="sm" color="default" />
+      ) : (
+        <Text
+          className={`text-[14px] font-semibold ${background ? "text-white" : "text-foreground"}`}
+        >
+          {label}
+        </Text>
+      )}
+    </Pressable>
   );
 }
