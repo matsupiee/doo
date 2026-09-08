@@ -8,4 +8,3 @@ export * from "./relay";
 export * from "./assignment";
 export * from "./post";
 export * from "./post-reaction";
-export * from "./relations";

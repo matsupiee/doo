@@ -1,8 +1,9 @@
 import { createId } from "@paralleldrive/cuid2";
 import { index, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
-import { createdAt } from "./_shared";
+import { createdAt, updatedAt } from "./_shared";
 import { mission } from "./mission";
+import { relations } from "drizzle-orm";
 
 /**
  * The categories a mission can be filed under. Fixed on purpose so the DB
@@ -31,15 +32,29 @@ export const missionCategory = sqliteTable(
     id: text("id")
       .$defaultFn(() => createId())
       .primaryKey(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
     missionId: text("mission_id")
       .notNull()
       .references(() => mission.id, { onDelete: "cascade" }),
     category: text("category", { enum: missionCategoryValues }).notNull(),
-    createdAt: createdAt(),
   },
   (table) => [
     index("mission_category_missionId_idx").on(table.missionId),
     index("mission_category_category_idx").on(table.category),
-    uniqueIndex("mission_category_mission_category_uidx").on(table.missionId, table.category),
+    uniqueIndex("mission_category_mission_category_uidx").on(
+      table.missionId,
+      table.category,
+    ),
   ],
+);
+
+export const missionCategoryRelations = relations(
+  missionCategory,
+  ({ one }) => ({
+    mission: one(mission, {
+      fields: [missionCategory.missionId],
+      references: [mission.id],
+    }),
+  }),
 );

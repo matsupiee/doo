@@ -1,9 +1,11 @@
 import { createId } from "@paralleldrive/cuid2";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-import { createdAt } from "./_shared";
+import { createdAt, updatedAt } from "./_shared";
 import { mission } from "./mission";
 import { user } from "./user";
+import { relations } from "drizzle-orm";
+import { assignment } from "./assignment";
 
 /** "open" while the chain can still grow, "closed" once every branch ended. */
 export const relayStatus = ["open", "closed"] as const;
@@ -18,6 +20,8 @@ export const relay = sqliteTable(
     id: text("id")
       .$defaultFn(() => createId())
       .primaryKey(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
     missionId: text("mission_id")
       .notNull()
       .references(() => mission.id, { onDelete: "cascade" }),
@@ -27,7 +31,15 @@ export const relay = sqliteTable(
     /** How many people a single participant may pass the baton to (1-10). */
     maxNominations: integer("max_nominations").default(1).notNull(),
     status: text("status", { enum: relayStatus }).default("open").notNull(),
-    createdAt: createdAt(),
   },
   (table) => [index("relay_missionId_idx").on(table.missionId)],
 );
+
+export const relayRelations = relations(relay, ({ one, many }) => ({
+  mission: one(mission, {
+    fields: [relay.missionId],
+    references: [mission.id],
+  }),
+  starter: one(user, { fields: [relay.starterId], references: [user.id] }),
+  assignments: many(assignment),
+}));
