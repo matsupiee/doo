@@ -1,6 +1,6 @@
 # フィードをタグで絞り込む
 
-> ステータス: スキーマ済み / API・UI は後続
+> ステータス: 実装済み
 
 ## ストーリー
 
@@ -36,4 +36,8 @@
 
 ## 対応するテスト
 
-後続で `packages/api/test/feed.test.ts` に追加する。
+`packages/api/test/feed.test.ts` の「feed.list — タグで絞り込む」「feed.tags — 実際に使われているタグ」。
+
+```bash
+bun run test
+```

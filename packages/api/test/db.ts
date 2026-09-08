@@ -1,12 +1,13 @@
 import { db } from "@doo/db";
 import {
   account,
-  assignment,
   mission,
-  missionCategory,
+  missionCompletion,
+  missionCompletionParticipant,
+  missionParticipant,
+  missionTag,
   post,
   postReaction,
-  relay,
   session,
   user,
   verification,
@@ -24,11 +25,12 @@ export async function migrateTestDb() {
 
 /** Children first, so the foreign keys never complain. */
 export async function resetTestDb() {
+  await db.delete(missionCompletionParticipant);
+  await db.delete(missionCompletion);
   await db.delete(postReaction);
   await db.delete(post);
-  await db.delete(assignment);
-  await db.delete(relay);
-  await db.delete(missionCategory);
+  await db.delete(missionParticipant);
+  await db.delete(missionTag);
   await db.delete(mission);
   await db.delete(session);
   await db.delete(account);

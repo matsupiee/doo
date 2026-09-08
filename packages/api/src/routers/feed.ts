@@ -1,16 +1,15 @@
 import { db } from "@doo/db";
 import {
-  assignment,
   mission,
-  missionCategory,
-  missionCategoryValues,
+  missionCompletion,
+  missionCompletionParticipant,
+  missionTag,
   post,
   postReaction,
-  relay,
   user,
 } from "@doo/db/schema";
 import { TRPCError } from "@trpc/server";
-import { aliasedTable, and, desc, eq, inArray, lt, sql } from "drizzle-orm";
+import { aliasedTable, and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import z from "zod";
 
 import { protectedProcedure, router } from "../index";
@@ -19,21 +18,36 @@ const author = aliasedTable(user, "author");
 const missionCreator = aliasedTable(user, "mission_creator");
 
 export const feedRouter = router({
-  /** "誰か面白い達成してないかな？" — every proof post, newest first. */
+  /** 実際に使われているタグ。フィード上部のチップに並べる。 */
+  tags: protectedProcedure.query(async () => {
+    const rows = await db
+      .select({
+        title: missionTag.title,
+        missionCount: sql<number>`count(distinct ${missionTag.missionId})`,
+      })
+      .from(missionTag)
+      .groupBy(missionTag.title)
+      .orderBy(desc(sql`count(distinct ${missionTag.missionId})`), asc(missionTag.title));
+
+    return rows.map((row) => ({ ...row, missionCount: Number(row.missionCount) }));
+  }),
+
+  /** 全ユーザーの投稿を新しい順に。非公開の投稿は存在しない。 */
   list: protectedProcedure
     .input(
       z
         .object({
           limit: z.number().int().min(1).max(50).default(20),
-          /** Timestamp (ms) of the last item of the previous page. */
+          /** 前のページの最後の投稿の作成時刻（ミリ秒）。 */
           cursor: z.number().int().optional(),
-          /** Show only posts whose mission carries one of these categories. */
-          categories: z.array(z.enum(missionCategoryValues)).default([]),
+          /** どれか1つでも一致するタグを持つやりたいことの投稿だけ残す（OR）。 */
+          tags: z.array(z.string().trim().min(1)).default([]),
         })
-        .default({ limit: 20, categories: [] }),
+        .default({ limit: 20, tags: [] }),
     )
     .query(async ({ ctx, input }) => {
       const meId = ctx.session.user.id;
+      const tags = [...new Set(input.tags)];
 
       const rows = await db
         .select({
@@ -49,10 +63,8 @@ export const feedRouter = router({
           missionTitle: mission.title,
           missionDescription: mission.description,
           missionCreatorName: missionCreator.name,
-          relayId: assignment.relayId,
-          relayDepth: assignment.depth,
-          relayHandoff: assignment.relayHandoff,
-          pickedBy: assignment.pickedBy,
+          completionId: missionCompletion.id,
+          completedAt: missionCompletion.completedAt,
           reactionCount: sql<number>`(
             select count(*) from ${postReaction} where ${postReaction.postId} = ${post.id}
           )`,
@@ -65,17 +77,22 @@ export const feedRouter = router({
         .innerJoin(author, eq(author.id, post.authorId))
         .innerJoin(mission, eq(mission.id, post.missionId))
         .innerJoin(missionCreator, eq(missionCreator.id, mission.creatorId))
-        .innerJoin(assignment, eq(assignment.id, post.assignmentId))
+        /** 達成報告なら1件、進捗報告なら無し。 */
+        .leftJoin(missionCompletion, eq(missionCompletion.postId, post.id))
         .where(
           and(
             input.cursor ? lt(post.createdAt, new Date(input.cursor)) : undefined,
-            input.categories.length
+            /**
+             * 1件の投稿が複数のタグに一致しても、in で1回だけ数えるので重複しない。
+             * join で辿ると同じ投稿が複数行になる。
+             */
+            tags.length
               ? inArray(
                   mission.id,
                   db
-                    .select({ id: missionCategory.missionId })
-                    .from(missionCategory)
-                    .where(inArray(missionCategory.category, input.categories)),
+                    .select({ id: missionTag.missionId })
+                    .from(missionTag)
+                    .where(inArray(missionTag.title, tags)),
                 )
               : undefined,
           ),
@@ -83,24 +100,53 @@ export const feedRouter = router({
         .orderBy(desc(post.createdAt))
         .limit(input.limit);
 
-      const categoryRows = rows.length
+      const missionIds = [...new Set(rows.map((row) => row.missionId))];
+      const tagRows = missionIds.length
         ? await db
-            .select({ missionId: missionCategory.missionId, category: missionCategory.category })
-            .from(missionCategory)
-            .where(inArray(missionCategory.missionId, [...new Set(rows.map((r) => r.missionId))]))
-            .orderBy(missionCategory.createdAt)
+            .select({ missionId: missionTag.missionId, title: missionTag.title })
+            .from(missionTag)
+            .where(inArray(missionTag.missionId, missionIds))
+            .orderBy(asc(missionTag.createdAt))
         : [];
 
       const byMission = new Map<string, string[]>();
-      for (const row of categoryRows) {
+      for (const row of tagRows) {
         const list = byMission.get(row.missionId);
-        if (list) list.push(row.category);
-        else byMission.set(row.missionId, [row.category]);
+        if (list) list.push(row.title);
+        else byMission.set(row.missionId, [row.title]);
+      }
+
+      const completionIds = rows
+        .map((row) => row.completionId)
+        .filter((id): id is string => id !== null);
+      const completionRows = completionIds.length
+        ? await db
+            .select({
+              completionId: missionCompletionParticipant.completionId,
+              userId: missionCompletionParticipant.userId,
+              name: user.name,
+            })
+            .from(missionCompletionParticipant)
+            .innerJoin(user, eq(user.id, missionCompletionParticipant.userId))
+            .where(inArray(missionCompletionParticipant.completionId, completionIds))
+            .orderBy(asc(missionCompletionParticipant.createdAt))
+        : [];
+
+      const byCompletion = new Map<string, { userId: string; name: string }[]>();
+      for (const row of completionRows) {
+        const list = byCompletion.get(row.completionId);
+        const value = { userId: row.userId, name: row.name };
+        if (list) list.push(value);
+        else byCompletion.set(row.completionId, [value]);
       }
 
       const items = rows.map((row) => ({
         ...row,
-        missionCategories: (byMission.get(row.missionId) ?? []) as (typeof missionCategoryValues)[number][],
+        missionTags: byMission.get(row.missionId) ?? [],
+        /** 達成の参加者。1人なら個人達成、複数人なら共同達成。進捗報告なら空。 */
+        completionParticipants: row.completionId
+          ? (byCompletion.get(row.completionId) ?? [])
+          : [],
         reactionCount: Number(row.reactionCount),
         reactedByMe: Number(row.reactedByMe) > 0,
       }));
@@ -123,7 +169,7 @@ export const feedRouter = router({
         .from(post)
         .where(eq(post.id, input.postId))
         .limit(1);
-      if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
+      if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "投稿が見つかりません" });
 
       const [existing] = await db
         .select({ id: postReaction.id })
@@ -138,64 +184,5 @@ export const feedRouter = router({
 
       await db.insert(postReaction).values({ postId: input.postId, userId: meId });
       return { reacted: true };
-    }),
-});
-
-export const relayRouter = router({
-  /** The whole chain behind one relay, for the relay detail screen. */
-  get: protectedProcedure
-    .input(z.object({ relayId: z.string().min(1) }))
-    .query(async ({ input }) => {
-      const [relayRow] = await db
-        .select({
-          id: relay.id,
-          status: relay.status,
-          maxNominations: relay.maxNominations,
-          createdAt: relay.createdAt,
-          missionId: mission.id,
-          missionTitle: mission.title,
-          missionDescription: mission.description,
-          starterName: user.name,
-        })
-        .from(relay)
-        .innerJoin(mission, eq(mission.id, relay.missionId))
-        .innerJoin(user, eq(user.id, relay.starterId))
-        .where(eq(relay.id, input.relayId))
-        .limit(1);
-
-      if (!relayRow) throw new TRPCError({ code: "NOT_FOUND", message: "Relay not found" });
-
-      const categoryRows = await db
-        .select({ category: missionCategory.category })
-        .from(missionCategory)
-        .where(eq(missionCategory.missionId, relayRow.missionId))
-        .orderBy(missionCategory.createdAt);
-
-      const nodes = await db
-        .select({
-          assignmentId: assignment.id,
-          parentAssignmentId: assignment.parentAssignmentId,
-          depth: assignment.depth,
-          status: assignment.status,
-          pickedBy: assignment.pickedBy,
-          relayHandoff: assignment.relayHandoff,
-          clearedAt: assignment.clearedAt,
-          assigneeId: user.id,
-          assigneeName: user.name,
-          postId: post.id,
-          mediaType: post.mediaType,
-          mediaUrl: post.mediaUrl,
-          caption: post.caption,
-        })
-        .from(assignment)
-        .innerJoin(user, eq(user.id, assignment.assigneeId))
-        .leftJoin(post, eq(post.assignmentId, assignment.id))
-        .where(eq(assignment.relayId, input.relayId))
-        .orderBy(assignment.depth, assignment.createdAt);
-
-      return {
-        relay: { ...relayRow, categories: categoryRows.map((row) => row.category) },
-        nodes,
-      };
     }),
 });

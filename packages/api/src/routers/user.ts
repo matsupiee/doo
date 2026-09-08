@@ -1,13 +1,82 @@
 import { db } from "@doo/db";
-import { assignment, mission, missionCategory, post, user } from "@doo/db/schema";
+import {
+  mission,
+  missionCompletion,
+  missionCompletionParticipant,
+  missionParticipant,
+  missionTag,
+  post,
+  user,
+} from "@doo/db/schema";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, inArray, like, ne, sql } from "drizzle-orm";
+import { aliasedTable, and, asc, desc, eq, inArray, like, ne, sql } from "drizzle-orm";
 import z from "zod";
 
 import { protectedProcedure, router } from "../index";
 
+const completionParticipantUser = aliasedTable(user, "completion_participant_user");
+
+/** その人が参加した達成を新しい順に。プロフィールの達成一覧に使う。 */
+async function completionsOf(userId: string, limit: number) {
+  const rows = await db
+    .select({
+      completionId: missionCompletion.id,
+      completedAt: missionCompletion.completedAt,
+      missionId: mission.id,
+      missionTitle: mission.title,
+      postId: post.id,
+      mediaType: post.mediaType,
+      mediaUrl: post.mediaUrl,
+      caption: post.caption,
+    })
+    .from(missionCompletionParticipant)
+    .innerJoin(
+      missionCompletion,
+      eq(missionCompletion.id, missionCompletionParticipant.completionId),
+    )
+    .innerJoin(mission, eq(mission.id, missionCompletion.missionId))
+    .innerJoin(post, eq(post.id, missionCompletion.postId))
+    .where(eq(missionCompletionParticipant.userId, userId))
+    .orderBy(desc(missionCompletion.completedAt))
+    .limit(limit);
+
+  const participantRows = rows.length
+    ? await db
+        .select({
+          completionId: missionCompletionParticipant.completionId,
+          userId: missionCompletionParticipant.userId,
+          name: completionParticipantUser.name,
+        })
+        .from(missionCompletionParticipant)
+        .innerJoin(
+          completionParticipantUser,
+          eq(completionParticipantUser.id, missionCompletionParticipant.userId),
+        )
+        .where(
+          inArray(
+            missionCompletionParticipant.completionId,
+            rows.map((row) => row.completionId),
+          ),
+        )
+        .orderBy(asc(missionCompletionParticipant.createdAt))
+    : [];
+
+  const byCompletion = new Map<string, { userId: string; name: string }[]>();
+  for (const row of participantRows) {
+    const list = byCompletion.get(row.completionId);
+    const value = { userId: row.userId, name: row.name };
+    if (list) list.push(value);
+    else byCompletion.set(row.completionId, [value]);
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    participants: byCompletion.get(row.completionId) ?? [],
+  }));
+}
+
 export const userRouter = router({
-  /** The signed-in account plus the counters shown on the profile header. */
+  /** サインインしているアカウントと、プロフィールのヘッダーに出す件数。 */
   me: protectedProcedure.query(async ({ ctx }) => {
     const [me] = await db
       .select({ id: user.id, name: user.name, email: user.email, image: user.image })
@@ -16,24 +85,26 @@ export const userRouter = router({
       .limit(1);
 
     if (!me) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      throw new TRPCError({ code: "NOT_FOUND", message: "ユーザーが見つかりません" });
     }
 
-    const [counts] = await db
-      .select({
-        pending: sql<number>`sum(case when ${assignment.status} = 'pending' then 1 else 0 end)`,
-        cleared: sql<number>`sum(case when ${assignment.status} = 'cleared' then 1 else 0 end)`,
-      })
-      .from(assignment)
-      .where(eq(assignment.assigneeId, me.id));
+    const [participating] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(missionParticipant)
+      .where(eq(missionParticipant.userId, me.id));
+
+    const [completed] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(missionCompletionParticipant)
+      .where(eq(missionCompletionParticipant.userId, me.id));
 
     return {
       id: me.id,
       name: me.name,
       email: me.email,
       image: me.image ?? null,
-      pendingCount: Number(counts?.pending ?? 0),
-      clearedCount: Number(counts?.cleared ?? 0),
+      participatingCount: Number(participating?.count ?? 0),
+      completedCount: Number(completed?.count ?? 0),
     };
   }),
 
@@ -44,9 +115,14 @@ export const userRouter = router({
       return { name: input.name };
     }),
 
-  /** Used by the mission composer to pick who receives the mission. */
+  /** 共同達成に並べる人を選ぶために使う。 */
   search: protectedProcedure
-    .input(z.object({ query: z.string().trim().max(40).default(""), limit: z.number().min(1).max(50).default(20) }))
+    .input(
+      z.object({
+        query: z.string().trim().max(40).default(""),
+        limit: z.number().min(1).max(50).default(20),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       const filters = [ne(user.id, ctx.session.user.id)];
       if (input.query) {
@@ -61,7 +137,7 @@ export const userRouter = router({
         .limit(input.limit);
     }),
 
-  /** Public profile: account name and what that person has cleared so far. */
+  /** 誰でも見えるプロフィール。登録したやりたいことと、達成した記録が並ぶ。 */
   profile: protectedProcedure
     .input(z.object({ userId: z.string().min(1) }))
     .query(async ({ input }) => {
@@ -72,46 +148,53 @@ export const userRouter = router({
         .limit(1);
 
       if (!target) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "ユーザーが見つかりません" });
       }
 
-      const posts = await db
+      const missions = await db
         .select({
-          id: post.id,
           missionId: mission.id,
-          missionTitle: mission.title,
-          mediaType: post.mediaType,
-          mediaUrl: post.mediaUrl,
-          caption: post.caption,
-          createdAt: post.createdAt,
+          title: mission.title,
+          description: mission.description,
+          createdAt: mission.createdAt,
         })
-        .from(post)
-        .innerJoin(mission, eq(mission.id, post.missionId))
-        .where(eq(post.authorId, target.id))
-        .orderBy(desc(post.createdAt))
+        .from(mission)
+        .where(eq(mission.creatorId, target.id))
+        .orderBy(desc(mission.createdAt))
         .limit(50);
 
-      const categoryRows = posts.length
+      const tagRows = missions.length
         ? await db
-            .select({ missionId: missionCategory.missionId, category: missionCategory.category })
-            .from(missionCategory)
-            .where(inArray(missionCategory.missionId, [...new Set(posts.map((p) => p.missionId))]))
-            .orderBy(missionCategory.createdAt)
+            .select({ missionId: missionTag.missionId, title: missionTag.title })
+            .from(missionTag)
+            .where(
+              inArray(
+                missionTag.missionId,
+                missions.map((row) => row.missionId),
+              ),
+            )
+            .orderBy(asc(missionTag.createdAt))
         : [];
 
       const byMission = new Map<string, string[]>();
-      for (const row of categoryRows) {
+      for (const row of tagRows) {
         const list = byMission.get(row.missionId);
-        if (list) list.push(row.category);
-        else byMission.set(row.missionId, [row.category]);
+        if (list) list.push(row.title);
+        else byMission.set(row.missionId, [row.title]);
       }
 
       return {
         user: target,
-        posts: posts.map((row) => ({
+        missions: missions.map((row) => ({
           ...row,
-          missionCategories: byMission.get(row.missionId) ?? [],
+          tags: byMission.get(row.missionId) ?? [],
         })),
+        completions: await completionsOf(target.id, 50),
       };
     }),
+
+  /** 自分の達成一覧。プロフィールの「達成したこと」に出す。 */
+  myCompletions: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(50).default(20) }).default({ limit: 20 }))
+    .query(async ({ ctx, input }) => completionsOf(ctx.session.user.id, input.limit)),
 });

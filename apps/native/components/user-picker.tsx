@@ -9,12 +9,12 @@ import { trpc } from "@/utils/trpc";
 type Props = {
   selectedIds: string[];
   onChange: (ids: string[]) => void;
-  /** Upper bound on the selection, e.g. the relay's nominations-per-hop limit. */
+  /** 選べる人数の上限。共同達成に並べられる人数に合わせる。 */
   max: number;
   excludeIds?: string[];
 };
 
-/** Search-and-tap list used both when creating a mission and when passing a baton. */
+/** 名前で探してタップで選ぶ一覧。共同達成の相手を選ぶのに使う。 */
 export function UserPicker({ selectedIds, onChange, max, excludeIds = [] }: Props) {
   const [query, setQuery] = useState("");
   const successColor = useThemeColor("success");

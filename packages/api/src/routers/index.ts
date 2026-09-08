@@ -1,5 +1,5 @@
 import { protectedProcedure, publicProcedure, router } from "../index";
-import { feedRouter, relayRouter } from "./feed";
+import { feedRouter } from "./feed";
 import { missionRouter } from "./mission";
 import { uploadRouter } from "./upload";
 import { userRouter } from "./user";
@@ -17,7 +17,6 @@ export const appRouter = router({
   user: userRouter,
   mission: missionRouter,
   feed: feedRouter,
-  relay: relayRouter,
   upload: uploadRouter,
 });
 export type AppRouter = typeof appRouter;

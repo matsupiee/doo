@@ -1,6 +1,6 @@
 # やりたいことを登録する
 
-> ステータス: スキーマ済み / API・UI は後続
+> ステータス: 実装済み
 
 ## ストーリー
 
@@ -45,4 +45,8 @@
 
 ## 対応するテスト
 
-後続で `packages/api/test/mission.test.ts` に追加する。
+`packages/api/test/mission.test.ts` の「mission.create — やりたいことを登録する」。
+
+```bash
+bun run test
+```

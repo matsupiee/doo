@@ -1,6 +1,6 @@
 # 他の人のやりたいことに参加する
 
-> ステータス: スキーマ済み / API・UI は後続
+> ステータス: 実装済み。通知だけ後続（[通知で気づく](./notifications.md)）
 
 ## ストーリー
 
@@ -62,4 +62,8 @@
 
 ## 対応するテスト
 
-後続で `packages/api/test/mission.test.ts` に追加する。
+`packages/api/test/mission.test.ts` の「mission.join / mission.leave — 参加と退出」。
+
+```bash
+bun run test
+```

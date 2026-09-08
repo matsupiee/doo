@@ -41,11 +41,8 @@ function StackLayout() {
     >
       <Stack.Protected guard={isSignedIn}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="mission/[assignmentId]"
-          options={{ title: "ミッション達成", presentation: "modal" }}
-        />
-        <Stack.Screen name="relay/[relayId]" options={{ title: "リレー" }} />
+        <Stack.Screen name="mission/[missionId]" options={{ title: "やりたいこと" }} />
+        <Stack.Screen name="user/[userId]" options={{ title: "プロフィール" }} />
       </Stack.Protected>
 
       <Stack.Protected guard={!isSignedIn}>

@@ -1,37 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, router } from "expo-router";
-import { Button, Card, Chip, Input, Spinner, TextField, useToast } from "heroui-native";
+import { router } from "expo-router";
+import { Button, Card, Input, Spinner, TextField, useToast } from "heroui-native";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { CategoryChips } from "@/components/category-chips";
 import { Container } from "@/components/container";
 import { formatWhen } from "@/components/post-card";
-import { UserPicker } from "@/components/user-picker";
+import { TagChips } from "@/components/tag-chips";
 import { authClient } from "@/lib/auth-client";
 import { queryClient, trpc } from "@/utils/trpc";
-
-const MAX_RECIPIENTS = 10;
-
-const pickedByLabel = {
-  self: "自分で受けた",
-  nominated: "指名",
-  random: "ランダム",
-  joined: "一緒にやる",
-} as const;
 
 export default function ProfileScreen() {
   const { toast } = useToast();
   const [isEditingName, setIsEditingName] = useState(false);
   const [name, setName] = useState("");
-  /** Mission id whose "あとから渡す" picker is open, if any. */
-  const [assigningMissionId, setAssigningMissionId] = useState<string | null>(null);
-  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
 
   const me = useQuery(trpc.user.me.queryOptions());
-  const inbox = useQuery(trpc.mission.inbox.queryOptions());
-  const sent = useQuery(trpc.mission.sent.queryOptions());
+  const mine = useQuery(trpc.mission.mine.queryOptions());
+  const participating = useQuery(trpc.mission.participating.queryOptions());
+  const completions = useQuery(trpc.user.myCompletions.queryOptions({ limit: 20 }));
 
   const updateName = useMutation(
     trpc.user.updateName.mutationOptions({
@@ -44,28 +32,6 @@ export default function ProfileScreen() {
     }),
   );
 
-  const assign = useMutation(
-    trpc.mission.assign.mutationOptions({
-      onSuccess: (result) => {
-        queryClient.invalidateQueries();
-        setAssigningMissionId(null);
-        setAssigneeIds([]);
-        toast.show({
-          variant: "success",
-          label: `${result.assignmentCount}人にミッションを渡しました`,
-        });
-      },
-      onError: (error) => toast.show({ variant: "danger", label: error.message }),
-    }),
-  );
-
-  const decline = useMutation(
-    trpc.mission.decline.mutationOptions({
-      onSuccess: () => queryClient.invalidateQueries(),
-      onError: (error) => toast.show({ variant: "danger", label: error.message }),
-    }),
-  );
-
   if (me.isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
@@ -73,6 +39,9 @@ export default function ProfileScreen() {
       </View>
     );
   }
+
+  /** 自分が作ったものは「やりたいこと」に出すので、参加中からは外す。 */
+  const joined = (participating.data ?? []).filter((item) => !item.isCreator);
 
   return (
     <Container className="px-4" scrollViewProps={{ showsVerticalScrollIndicator: false }}>
@@ -106,7 +75,7 @@ export default function ProfileScreen() {
               <View className="flex-1">
                 <Text className="text-foreground text-2xl font-bold">{me.data?.name}</Text>
                 <Text className="text-muted text-xs">
-                  達成 {me.data?.clearedCount} ・ 進行中 {me.data?.pendingCount}
+                  達成 {me.data?.completedCount} ・ 参加中 {me.data?.participatingCount}
                 </Text>
               </View>
               <Pressable
@@ -123,156 +92,103 @@ export default function ProfileScreen() {
         </Card>
 
         <View className="gap-3">
-          <Text className="text-foreground text-lg font-semibold">来ているミッション</Text>
+          <Text className="text-foreground text-lg font-semibold">やりたいこと</Text>
 
-          {inbox.isLoading ? <Spinner size="sm" /> : null}
+          {mine.isLoading ? <Spinner size="sm" /> : null}
 
-          {!inbox.isLoading && (inbox.data?.length ?? 0) === 0 ? (
+          {!mine.isLoading && (mine.data?.length ?? 0) === 0 ? (
             <Card variant="secondary" className="p-4">
               <Text className="text-muted text-sm">
-                いまは空っぽ。誰かからの依頼を待つか、自分でミッションを作ってみよう。
+                まだ登録していません。作成タブから登録してみよう。
               </Text>
             </Card>
           ) : null}
 
-          {inbox.data?.map((item) => (
-            <Card key={item.assignmentId} variant="secondary" className="p-4 gap-2">
-              <View className="flex-row items-start gap-2">
-                <Text className="flex-1 text-foreground text-base font-semibold">
-                  🎯 {item.title}
-                </Text>
-                {item.relayId ? (
-                  <Chip variant="secondary" color="success" size="sm">
-                    <Chip.Label>リレー</Chip.Label>
-                  </Chip>
+          {mine.data?.map((item) => (
+            <Pressable
+              key={item.missionId}
+              className="active:opacity-70"
+              onPress={() =>
+                router.push({
+                  pathname: "/mission/[missionId]",
+                  params: { missionId: item.missionId },
+                })
+              }
+            >
+              <Card variant="secondary" className="p-4 gap-1">
+                <Text className="text-foreground font-semibold">🎯 {item.title}</Text>
+                {item.tags.length ? (
+                  <View className="mt-1">
+                    <TagChips tags={item.tags} />
+                  </View>
                 ) : null}
-              </View>
+                <Text className="text-muted text-xs">
+                  参加 {item.participantCount}人・達成 {item.completionCount}件・
+                  {formatWhen(item.createdAt)}
+                </Text>
+              </Card>
+            </Pressable>
+          ))}
+        </View>
 
-              <CategoryChips categories={item.categories} />
+        <View className="gap-3">
+          <Text className="text-foreground text-lg font-semibold">参加しているやりたいこと</Text>
 
-              {item.description ? (
-                <Text className="text-muted text-sm">{item.description}</Text>
-              ) : null}
-
-              <Text className="text-muted text-xs">
-                {item.assignerName ? `${item.assignerName} から` : "自分で受けた"}・
-                {pickedByLabel[item.pickedBy]}・{formatWhen(item.createdAt)}
+          {joined.length === 0 ? (
+            <Card variant="secondary" className="p-4">
+              <Text className="text-muted text-sm">
+                ホームで気になるやりたいことを見つけて参加しよう。
               </Text>
-
-              <View className="flex-row gap-2 mt-1">
-                <Button
-                  size="sm"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/mission/[assignmentId]",
-                      params: { assignmentId: item.assignmentId },
-                    })
-                  }
-                >
-                  <Button.Label>達成を投稿</Button.Label>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  isDisabled={decline.isPending}
-                  onPress={() => decline.mutate({ assignmentId: item.assignmentId })}
-                >
-                  <Button.Label>やらない</Button.Label>
-                </Button>
-              </View>
             </Card>
+          ) : null}
+
+          {joined.map((item) => (
+            <Pressable
+              key={item.missionId}
+              className="active:opacity-70"
+              onPress={() =>
+                router.push({
+                  pathname: "/mission/[missionId]",
+                  params: { missionId: item.missionId },
+                })
+              }
+            >
+              <Card variant="secondary" className="p-4 gap-1">
+                <Text className="text-foreground font-semibold">🎯 {item.title}</Text>
+                {item.tags.length ? (
+                  <View className="mt-1">
+                    <TagChips tags={item.tags} />
+                  </View>
+                ) : null}
+                <Text className="text-muted text-xs">
+                  登録: {item.creatorName}・自分の達成 {item.myCompletionCount}件
+                </Text>
+              </Card>
+            </Pressable>
           ))}
         </View>
 
         <View className="gap-3 pb-8">
-          <Text className="text-foreground text-lg font-semibold">出したミッション</Text>
+          <Text className="text-foreground text-lg font-semibold">達成したこと</Text>
 
-          {(sent.data?.length ?? 0) === 0 ? (
+          {(completions.data?.length ?? 0) === 0 ? (
             <Card variant="secondary" className="p-4">
-              <Text className="text-muted text-sm">まだ誰にもミッションを渡していません。</Text>
+              <Text className="text-muted text-sm">まだ達成の記録はありません。</Text>
             </Card>
           ) : null}
 
-          {sent.data?.map((item) => (
-            <Card key={item.missionId} variant="secondary" className="p-4 gap-1">
-              <Text className="text-foreground font-semibold">🎯 {item.title}</Text>
-
-              {item.categories.length ? (
-                <View className="mt-1">
-                  <CategoryChips categories={item.categories} />
-                </View>
-              ) : null}
-
+          {completions.data?.map((item) => (
+            <Card key={item.completionId} variant="secondary" className="p-4 gap-1">
+              <Text className="text-foreground font-semibold">🎯 {item.missionTitle}</Text>
               <Text className="text-muted text-xs">
-                {item.total === 0
-                  ? "まだ誰にも渡していません"
-                  : `${item.cleared} / ${item.total} 人が達成`}
+                {item.participants.length > 1
+                  ? `${item.participants.map((row) => row.name).join("・")} と共同達成`
+                  : "個人達成"}
+                ・{formatWhen(item.completedAt)}
               </Text>
-
-              {item.relayId ? (
-                <Link
-                  href={{ pathname: "/relay/[relayId]", params: { relayId: item.relayId } }}
-                  className="text-success text-xs mt-1"
-                >
-                  リレーの続きを見る →
-                </Link>
-              ) : (
-                <View className="mt-2 gap-3">
-                  {assigningMissionId === item.missionId ? (
-                    <>
-                      <UserPicker
-                        selectedIds={assigneeIds}
-                        onChange={setAssigneeIds}
-                        max={MAX_RECIPIENTS}
-                      />
-                      <View className="flex-row gap-2">
-                        <Button
-                          size="sm"
-                          isDisabled={assigneeIds.length === 0 || assign.isPending}
-                          onPress={() =>
-                            assign.mutate({ missionId: item.missionId, assigneeIds })
-                          }
-                        >
-                          <Button.Label>渡す</Button.Label>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onPress={() => {
-                            setAssigningMissionId(null);
-                            setAssigneeIds([]);
-                          }}
-                        >
-                          <Button.Label>キャンセル</Button.Label>
-                        </Button>
-                      </View>
-                    </>
-                  ) : (
-                    <View className="flex-row gap-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onPress={() => {
-                          setAssigningMissionId(item.missionId);
-                          setAssigneeIds([]);
-                        }}
-                      >
-                        <Button.Label>誰かに渡す</Button.Label>
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        isDisabled={assign.isPending}
-                        onPress={() =>
-                          assign.mutate({ missionId: item.missionId, assignToSelf: true })
-                        }
-                      >
-                        <Button.Label>自分でやる</Button.Label>
-                      </Button>
-                    </View>
-                  )}
-                </View>
-              )}
+              {item.caption ? (
+                <Text className="text-foreground text-sm mt-1">{item.caption}</Text>
+              ) : null}
             </Card>
           ))}
 
