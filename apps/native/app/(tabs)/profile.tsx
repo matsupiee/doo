@@ -7,6 +7,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/ig/avatar";
+import { CreateMenuButton } from "@/components/ig/create-menu";
 import { EmptyState } from "@/components/ig/empty-state";
 import { HighlightRail } from "@/components/ig/highlight-rail";
 import { MissionRow } from "@/components/ig/mission-row";
@@ -40,8 +41,9 @@ export default function ProfileScreen() {
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      {/* 登録の入口はホームの ＋ に一本化したので、ここは設定への導線だけ置く */}
+      {/* 作成の入口はここの左上の ＋、右上は設定への導線 */}
       <View className="flex-row items-center px-4 py-2.5">
+        <CreateMenuButton />
         <View className="flex-1" />
         <Pressable className="pl-2 active:opacity-50" onPress={() => router.push("/settings")}>
           <Ionicons name="settings-outline" size={26} color={foreground} />
@@ -106,7 +108,7 @@ export default function ProfileScreen() {
               <EmptyState
                 icon="flag-outline"
                 title="まだ登録していません"
-                body="ホームの右上の ＋ からやりたいことを登録してみよう。"
+                body="左上の ＋ からやりたいことを登録してみよう。"
               />
             ) : (
               myMissions.map((item) => (
