@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Spinner, useThemeColor } from "heroui-native";
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/ig/avatar";
@@ -13,13 +13,10 @@ import { MissionRow } from "@/components/ig/mission-row";
 import { PostGrid } from "@/components/ig/post-grid";
 import { ProfileStats } from "@/components/ig/profile-stats";
 import { ProfileTabs } from "@/components/ig/profile-tabs";
-import { authClient } from "@/lib/auth-client";
-import { useAppTheme } from "@/contexts/app-theme-context";
-import { queryClient, trpc } from "@/utils/trpc";
+import { trpc } from "@/utils/trpc";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { toggleTheme, isLight } = useAppTheme();
   const foreground = useThemeColor("foreground");
 
   const [tab, setTab] = useState<"grid" | "missions">("grid");
@@ -41,31 +38,13 @@ export default function ProfileScreen() {
   const joined = (participating.data ?? []).filter((item) => !item.isCreator);
   const myMissions = mine.data ?? [];
 
-  function openMenu() {
-    Alert.alert("設定", undefined, [
-      {
-        text: isLight ? "ダークモードにする" : "ライトモードにする",
-        onPress: toggleTheme,
-      },
-      {
-        text: "サインアウト",
-        style: "destructive",
-        onPress: () => {
-          authClient.signOut();
-          queryClient.clear();
-        },
-      },
-      { text: "キャンセル", style: "cancel" },
-    ]);
-  }
-
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      {/* 登録の入口はホームの ＋ に一本化したので、ここは設定メニューだけ置く */}
+      {/* 登録の入口はホームの ＋ に一本化したので、ここは設定への導線だけ置く */}
       <View className="flex-row items-center px-4 py-2.5">
         <View className="flex-1" />
-        <Pressable className="pl-2 active:opacity-50" onPress={openMenu}>
-          <Ionicons name="menu" size={28} color={foreground} />
+        <Pressable className="pl-2 active:opacity-50" onPress={() => router.push("/settings")}>
+          <Ionicons name="settings-outline" size={26} color={foreground} />
         </Pressable>
       </View>
 
