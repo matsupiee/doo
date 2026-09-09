@@ -79,7 +79,13 @@ export const userRouter = router({
   /** サインインしているアカウントと、プロフィールのヘッダーに出す件数。 */
   me: protectedProcedure.query(async ({ ctx }) => {
     const [me] = await db
-      .select({ id: user.id, name: user.name, email: user.email, image: user.image })
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.image,
+        bio: user.bio,
+      })
       .from(user)
       .where(eq(user.id, ctx.session.user.id))
       .limit(1);
@@ -103,16 +109,36 @@ export const userRouter = router({
       name: me.name,
       email: me.email,
       image: me.image ?? null,
+      bio: me.bio ?? null,
       participatingCount: Number(participating?.count ?? 0),
       completedCount: Number(completed?.count ?? 0),
     };
   }),
 
-  updateName: protectedProcedure
-    .input(z.object({ name: z.string().trim().min(1).max(40) }))
+  /**
+   * プロフィール編集画面が送る、名前・アイコン・自己紹介のまとめての置き換え。
+   *
+   * 画面はいつも3つとも今の値を送るので、省いた項目は「消した」として扱う。
+   * `image` はアップロード済みの公開 URL で、`upload.createUploadUrl` の
+   * `publicUrl` をそのまま渡す。
+   */
+  updateProfile: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().trim().min(1).max(40),
+        bio: z.string().trim().max(200).nullable().default(null),
+        image: z.url().max(1000).nullable().default(null),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
-      await db.update(user).set({ name: input.name }).where(eq(user.id, ctx.session.user.id));
-      return { name: input.name };
+      const next = {
+        name: input.name,
+        bio: input.bio ? input.bio : null,
+        image: input.image,
+      };
+
+      await db.update(user).set(next).where(eq(user.id, ctx.session.user.id));
+      return next;
     }),
 
   /** 共同達成に並べる人を選ぶために使う。 */
@@ -142,7 +168,7 @@ export const userRouter = router({
     .input(z.object({ userId: z.string().min(1) }))
     .query(async ({ input }) => {
       const [target] = await db
-        .select({ id: user.id, name: user.name, image: user.image })
+        .select({ id: user.id, name: user.name, image: user.image, bio: user.bio })
         .from(user)
         .where(eq(user.id, input.userId))
         .limit(1);

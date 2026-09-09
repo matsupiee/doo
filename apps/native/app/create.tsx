@@ -30,7 +30,8 @@ export default function CreateMissionScreen() {
         setDescription("");
         setTagDraft("");
         setTags([]);
-        router.push({
+        // 登録画面は残さず、そのまま登録できたやりたいことへ入れ替える。
+        router.replace({
           pathname: "/mission/[missionId]",
           params: { missionId: result.missionId },
         });

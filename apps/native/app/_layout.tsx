@@ -45,7 +45,9 @@ function StackLayout() {
     >
       <Stack.Protected guard={isSignedIn}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="create" options={{ title: "やりたいことの登録" }} />
         <Stack.Screen name="mission/[missionId]" options={{ title: "やりたいこと" }} />
+        <Stack.Screen name="profile/edit" options={{ title: "プロフィールを編集" }} />
         <Stack.Screen name="user/[userId]" options={{ title: "プロフィール" }} />
         <Stack.Screen name="settings/index" options={{ title: "設定" }} />
         <Stack.Screen name="settings/appearance" options={{ title: "外観" }} />
