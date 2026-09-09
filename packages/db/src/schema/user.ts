@@ -26,6 +26,8 @@ export const user = sqliteTable("user", {
     .default(false)
     .notNull(),
   image: text("image"),
+  /** プロフィールの自己紹介。未入力なら null。 */
+  bio: text("bio"),
 });
 
 export const userRelations = relations(user, ({ many }) => ({

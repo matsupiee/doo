@@ -61,6 +61,12 @@ export default function UserProfileScreen() {
 
       <View className="px-4 pb-3">
         <Text className="text-foreground text-[13px] font-semibold">{user.name}</Text>
+        {/* 自己紹介を書いている人は、名前のすぐ下に出す */}
+        {user.bio ? (
+          <Text className="text-foreground text-[13px]" style={{ lineHeight: 18 }}>
+            {user.bio}
+          </Text>
+        ) : null}
         <Text className="text-foreground text-[13px]">
           {completions.length
             ? `やりたいことを ${completions.length} 回達成しました。`

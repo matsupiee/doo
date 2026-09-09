@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { Input, Spinner, TextField, useThemeColor, useToast } from "heroui-native";
+import { Spinner, useThemeColor } from "heroui-native";
 import { useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,29 +19,15 @@ import { queryClient, trpc } from "@/utils/trpc";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { toast } = useToast();
   const { toggleTheme, isLight } = useAppTheme();
   const foreground = useThemeColor("foreground");
 
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [name, setName] = useState("");
   const [tab, setTab] = useState<"grid" | "missions">("grid");
 
   const me = useQuery(trpc.user.me.queryOptions());
   const mine = useQuery(trpc.mission.mine.queryOptions());
   const participating = useQuery(trpc.mission.participating.queryOptions());
   const completions = useQuery(trpc.user.myCompletions.queryOptions({ limit: 50 }));
-
-  const updateName = useMutation(
-    trpc.user.updateName.mutationOptions({
-      onSuccess: () => {
-        queryClient.invalidateQueries();
-        setIsEditingName(false);
-        toast.show({ variant: "success", label: "アカウント名を更新しました" });
-      },
-      onError: (error) => toast.show({ variant: "danger", label: error.message }),
-    }),
-  );
 
   if (me.isLoading) {
     return (
@@ -75,13 +61,9 @@ export default function ProfileScreen() {
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      {/* Instagram のプロフィールヘッダー: ユーザー名が左、操作が右 */}
-      <View className="flex-row items-center px-4 py-2.5 gap-1">
-        <Text className="text-foreground text-[20px] font-bold">{me.data?.name}</Text>
+      {/* 登録の入口はホームの ＋ に一本化したので、ここは設定メニューだけ置く */}
+      <View className="flex-row items-center px-4 py-2.5">
         <View className="flex-1" />
-        <Pressable className="px-2 active:opacity-50" onPress={() => router.push("/create")}>
-          <Ionicons name="add-circle-outline" size={26} color={foreground} />
-        </Pressable>
         <Pressable className="pl-2 active:opacity-50" onPress={openMenu}>
           <Ionicons name="menu" size={28} color={foreground} />
         </Pressable>
@@ -101,6 +83,12 @@ export default function ProfileScreen() {
 
         <View className="px-4 pb-3">
           <Text className="text-foreground text-[13px] font-semibold">{me.data?.name}</Text>
+          {/* 自己紹介を書いていれば、Instagram と同じく名前のすぐ下に出す */}
+          {me.data?.bio ? (
+            <Text className="text-foreground text-[13px]" style={{ lineHeight: 18 }}>
+              {me.data.bio}
+            </Text>
+          ) : null}
           <Text className="text-foreground text-[13px]">
             {me.data?.completedCount
               ? `やりたいことを ${me.data.completedCount} 回達成しました。`
@@ -108,33 +96,9 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {isEditingName ? (
-          <View className="px-4 pb-4 gap-2">
-            <TextField>
-              <Input value={name} onChangeText={setName} placeholder="アカウント名" autoFocus />
-            </TextField>
-            <View className="flex-row gap-2">
-              <PillButton
-                label="保存"
-                variant="accent"
-                isDisabled={!name.trim() || updateName.isPending}
-                onPress={() => updateName.mutate({ name: name.trim() })}
-              />
-              <PillButton label="キャンセル" onPress={() => setIsEditingName(false)} />
-            </View>
-          </View>
-        ) : (
-          <View className="flex-row px-4 pb-4 gap-1.5">
-            <PillButton
-              label="プロフィールを編集"
-              onPress={() => {
-                setName(me.data?.name ?? "");
-                setIsEditingName(true);
-              }}
-            />
-            <PillButton label="やりたいことを登録" onPress={() => router.push("/create")} />
-          </View>
-        )}
+        <View className="flex-row px-4 pb-4">
+          <PillButton label="プロフィールを編集" onPress={() => router.push("/profile/edit")} />
+        </View>
 
         {/* ハイライトの位置に、参加しているやりたいことを並べる */}
         <HighlightRail
@@ -163,7 +127,7 @@ export default function ProfileScreen() {
               <EmptyState
                 icon="flag-outline"
                 title="まだ登録していません"
-                body="作成タブからやりたいことを登録してみよう。"
+                body="ホームの右上の ＋ からやりたいことを登録してみよう。"
               />
             ) : (
               myMissions.map((item) => (
@@ -186,35 +150,13 @@ export default function ProfileScreen() {
 }
 
 /** Instagram のプロフィールにある、横に伸びる薄いグレーのボタン。 */
-function PillButton({
-  label,
-  onPress,
-  variant = "default",
-  isDisabled,
-}: {
-  label: string;
-  onPress: () => void;
-  variant?: "default" | "accent";
-  isDisabled?: boolean;
-}) {
+function PillButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable
-      onPress={isDisabled ? undefined : onPress}
-      className={`flex-1 items-center justify-center rounded-lg py-2 active:opacity-70 ${
-        variant === "accent" ? "" : "bg-surface-tertiary"
-      }`}
-      style={[
-        variant === "accent" ? { backgroundColor: "#0095f6" } : undefined,
-        isDisabled ? { opacity: 0.5 } : undefined,
-      ]}
+      onPress={onPress}
+      className="flex-1 items-center justify-center rounded-lg bg-surface-tertiary py-2 active:opacity-70"
     >
-      <Text
-        className={`text-[13px] font-semibold ${
-          variant === "accent" ? "text-white" : "text-foreground"
-        }`}
-      >
-        {label}
-      </Text>
+      <Text className="text-foreground text-[13px] font-semibold">{label}</Text>
     </Pressable>
   );
 }

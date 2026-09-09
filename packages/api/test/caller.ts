@@ -14,6 +14,11 @@ export function callerFor(userId: string) {
   } as unknown as Context);
 }
 
+/** サインインしていない状態。protectedProcedure が UNAUTHORIZED を返すのを確かめる。 */
+export function signedOutCaller() {
+  return appRouter.createCaller({ auth: null, session: null } as unknown as Context);
+}
+
 export async function errorOf(call: Promise<unknown>): Promise<TRPCError> {
   try {
     await call;

@@ -1,3 +1,5 @@
+import { eq } from "drizzle-orm";
+
 import { db } from "../index";
 import {
   mission,
@@ -18,11 +20,22 @@ import {
  * シードユーザーがいれば再利用する。
  */
 
+/** `bio` が null の人は、自己紹介を書いていないプロフィールの見え方を確かめるため。 */
 const PEOPLE = [
-  { key: "aoi", name: "あおい", email: "aoi@seed.doo.test" },
-  { key: "haru", name: "はる", email: "haru@seed.doo.test" },
-  { key: "mio", name: "みお", email: "mio@seed.doo.test" },
-  { key: "ren", name: "れん", email: "ren@seed.doo.test" },
+  {
+    key: "aoi",
+    name: "あおい",
+    email: "aoi@seed.doo.test",
+    bio: "パエリアを作りたい。週末は台所にいます。",
+  },
+  {
+    key: "haru",
+    name: "はる",
+    email: "haru@seed.doo.test",
+    bio: "毎朝走る人。近所の坂を全部のぼるのが目標。",
+  },
+  { key: "mio", name: "みお", email: "mio@seed.doo.test", bio: null },
+  { key: "ren", name: "れん", email: "ren@seed.doo.test", bio: null },
 ] as const;
 
 type PersonKey = (typeof PEOPLE)[number]["key"];
@@ -37,13 +50,23 @@ async function seedPeople() {
     });
 
     if (existing) {
+      // 何度流しても同じプロフィールになるように、名前と自己紹介は書き戻す。
+      await db
+        .update(user)
+        .set({ name: person.name, bio: person.bio })
+        .where(eq(user.id, existing.id));
       ids.set(person.key, existing.id);
       continue;
     }
 
     const [created] = await db
       .insert(user)
-      .values({ name: person.name, email: person.email, emailVerified: true })
+      .values({
+        name: person.name,
+        email: person.email,
+        emailVerified: true,
+        bio: person.bio,
+      })
       .returning({ id: user.id });
     if (!created) throw new Error(`Could not create the seed user ${person.name}`);
     ids.set(person.key, created.id);
