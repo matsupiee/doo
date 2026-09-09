@@ -77,3 +77,5 @@ react-native-svg で描く（`components/ig/gradient.tsx`）。
   そのままだが、中身はチップではない。
 - 画面の切り替え（サインアウト・テーマ）はプロフィール右上のハンバーガーから
   `Alert` で出す。Instagram の設定メニューと同じ置き場所になる。
+  - その後、この置き場所は歯車から開く設定画面に移した。
+    → [設定画面でアプリの見た目とサインアウトを操作する](../user-stories/app-settings.md)
