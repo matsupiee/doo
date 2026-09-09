@@ -29,7 +29,7 @@ const MAX_COMPANIONS = 19;
 
 export default function MissionDetailScreen() {
   const insets = useSafeAreaInsets();
-  const { missionId } = useLocalSearchParams<{ missionId: string }>();
+  const { missionId, compose } = useLocalSearchParams<{ missionId: string; compose?: string }>();
   const { toast } = useToast();
   const foreground = useThemeColor("foreground");
   const placeholder = useThemeColor("muted");
@@ -41,7 +41,10 @@ export default function MissionDetailScreen() {
   const [isPickingCompanions, setIsPickingCompanions] = useState(false);
 
   // 3点リーダーのメニュー・投稿シート・参加者一覧は、どれも下から出るシート。
-  const [openSheet, setOpenSheet] = useState<"menu" | "composer" | "participants" | null>(null);
+  // ホームの ＋ から「達成」で来たときは、最初から投稿シートを開けておく。
+  const [openSheet, setOpenSheet] = useState<"menu" | "composer" | "participants" | null>(
+    compose === "1" ? "composer" : null,
+  );
 
   const detail = useQuery(trpc.mission.get.queryOptions({ missionId }));
 
